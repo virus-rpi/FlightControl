@@ -32,10 +32,10 @@ func updateMaxHeight(maxHeight float64) {
 
 func controlTab(App fyne.App, MainWindow fyne.Window) fyne.CanvasObject {
 	ipLabel := widget.NewLabel("WaRa IP: " + App.Preferences().StringWithFallback("WaRaIP", "Not set"))
-	voltageLabel = widget.NewLabel("Voltage: 0 V")
+	voltageLabel = widget.NewLabel("Voltage: N/A V")
 	statusLabel = widget.NewLabel("Status: Not connected")
-	heightLabel = widget.NewLabel("Height: 0 m")
-	maxHeightLabel = widget.NewLabel("Max height: 0 m")
+	heightLabel = widget.NewLabel("Height: N/A m")
+	maxHeightLabel = widget.NewLabel("Max height: N/A m")
 
 	App.Preferences().AddChangeListener(func() {
 		ipLabel.SetText("WaRa IP: " + App.Preferences().StringWithFallback("WaRaIP", "Not set"))
