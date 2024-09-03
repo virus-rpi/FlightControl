@@ -1,4 +1,5 @@
-# Protocol
+# WARP - Protocol
+Acronym: ***Wa***ter ***R***ocket ***P***rotocol
 
 This is a description of the protocol used by the Water-Rocket to communicate with the ground station.
 
@@ -54,6 +55,7 @@ This is a description of the protocol used by the Water-Rocket to communicate wi
    - `idle`: The Water-Rocket is not logging
    - `logging`: The Water-Rocket is logging
    - `error`: An error occurred while logging
+- `/get/websocket` - Get the websocket address of the Water-Rocket
 
 ### Post-Endpoints
 - `/post/reset` - Reset the Water-Rocket
@@ -75,6 +77,13 @@ This is a description of the protocol used by the Water-Rocket to communicate wi
 - `/post/reset/accelerometer` - Reset the accelerometer
 - `/post/reset/barometer` - Reset the barometer
 - `/post/reset/gps` - Reset the gps
+
+
+### Websocket-Message Format
+The Water-Rocket sends live sensor readings to the flight control client in following format:
+```csv
+timestamp,altitude,max-altitude,status (index),voltage,x-rotation,y-rotation,z-rotation,x-rotation-speed,y-rotation-speed,z-rotation-speed,x-acceleration,y-acceleration,z-acceleration,x-velocity,y-velocity,z-velocity
+```
 
 
 ## Endpoints of the Base Station
