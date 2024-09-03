@@ -1,4 +1,5 @@
-# Protocol
+# WARP - Protocol
+Acronym: ***Wa***ter ***R***ocket ***P***rotocol
 
 This is a description of the protocol used by the Water-Rocket to communicate with the ground station.
 
@@ -12,8 +13,11 @@ This is a description of the protocol used by the Water-Rocket to communicate wi
    Possible values:
    - `idle`: The Water-Rocket is idle
    - `armed`: The Water-Rocket is armed
-   - `ascent`: The Water-Rocket is ascending
+   - `boosted-ascent`: The Water-Rocket is ascending with the boosters
+   - `powered-ascent`: The Water-Rocket is ascending with the main engine
+   - `unpowered-ascent`: The Water-Rocket is ascending without any engine 
    - `descent`: The Water-Rocket is descending
+   - `parachute-descent`: The parachute has been deployed and the Water-Rocket is descending 
    - `landed`: The Water-Rocket has landed
    - `error`: An error occurred (e.g. the parachute did not deploy)
 
@@ -54,6 +58,7 @@ This is a description of the protocol used by the Water-Rocket to communicate wi
    - `idle`: The Water-Rocket is not logging
    - `logging`: The Water-Rocket is logging
    - `error`: An error occurred while logging
+- `/get/websocket` - Get the websocket address of the Water-Rocket
 
 ### Post-Endpoints
 - `/post/reset` - Reset the Water-Rocket
@@ -75,6 +80,13 @@ This is a description of the protocol used by the Water-Rocket to communicate wi
 - `/post/reset/accelerometer` - Reset the accelerometer
 - `/post/reset/barometer` - Reset the barometer
 - `/post/reset/gps` - Reset the gps
+
+
+### Websocket-Message Format
+The Water-Rocket sends live sensor readings to the flight control client in following format:
+```csv
+timestamp,altitude,max-altitude,status (index),voltage,x-rotation,y-rotation,z-rotation,x-rotation-speed,y-rotation-speed,z-rotation-speed,x-acceleration,y-acceleration,z-acceleration,x-velocity,y-velocity,z-velocity
+```
 
 
 ## Endpoints of the Base Station
