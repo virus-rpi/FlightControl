@@ -1,15 +1,180 @@
 package main
 
+import (
+	"encoding/csv"
+	"fyne.io/fyne/v2"
+	"golang.org/x/net/websocket"
+	"log"
+	"net/url"
+	"strconv"
+	"strings"
+)
+
 // TODO: Implement the following functions:
-// - getVoltage
-// - getStatus
-// - getHeight
-// - getMaxHeight
 // - reset
 // - openHatch
 // - startLogging
 // - recalculateGyro
 // - resetGyro
+// - getLog
 
 // These functions should make post or get requests to the WaRa server
 // To get the IP of the server, use App.Preferences().StringWithFallback("WaRaIP", "Not set")
+
+const (
+	StatusIdle             = "idle"
+	StatusArmed            = "armed"
+	StatusBoostedAscent    = "boosted-ascent"
+	StatusPoweredAscent    = "powered-ascent"
+	StatusUnpoweredAscent  = "unpowered-ascent"
+	StatusDescent          = "descent"
+	StatusParachuteDescent = "parachute-descent"
+	StatusLanded           = "landed"
+	StatusError            = "error"
+)
+
+type Status string
+
+var ws *websocket.Conn
+var done chan struct{}
+
+var liveData struct {
+	timestamp      string
+	voltage        float64
+	status         Status
+	altitude       float64
+	maxAltitude    float64
+	xRotation      float64
+	yRotation      float64
+	zRotation      float64
+	xRotationSpeed float64
+	yRotationSpeed float64
+	zRotationSpeed float64
+	xAcceleration  float64
+	yAcceleration  float64
+	zAcceleration  float64
+	xVelocity      float64
+	yVelocity      float64
+	zVelocity      float64
+}
+
+func toStatus(indexStr string) Status {
+	index, _ := strconv.Atoi(indexStr)
+	switch index {
+	case 0:
+		return StatusIdle
+	case 1:
+		return StatusArmed
+	case 2:
+		return StatusBoostedAscent
+	case 3:
+		return StatusPoweredAscent
+	case 4:
+		return StatusUnpoweredAscent
+	case 5:
+		return StatusDescent
+	case 6:
+		return StatusParachuteDescent
+	case 7:
+		return StatusLanded
+	case 8:
+		return StatusError
+	default:
+		return StatusError
+	}
+}
+
+func initWebsocket(App fyne.App) {
+	wsUrl := url.URL{Scheme: "ws", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/websocket"}
+	log.Println("Connecting to " + wsUrl.String())
+
+	var err error
+	ws, err = websocket.Dial(wsUrl.String(), "", "http://localhost/")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer func(ws *websocket.Conn) {
+		err := ws.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(ws)
+
+	done = make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for {
+			var msg string
+			err := websocket.Message.Receive(ws, &msg)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			log.Printf("Received: %s\n", msg)
+
+			reader := csv.NewReader(strings.NewReader(msg))
+			record, err := reader.Read()
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			if len(record) == 17 {
+				liveData.timestamp = record[0]
+				liveData.altitude, _ = strconv.ParseFloat(record[1], 64)
+				liveData.maxAltitude, _ = strconv.ParseFloat(record[2], 64)
+				liveData.status = toStatus(record[3])
+				liveData.voltage, _ = strconv.ParseFloat(record[4], 64)
+				liveData.xRotation, _ = strconv.ParseFloat(record[5], 64)
+				liveData.yRotation, _ = strconv.ParseFloat(record[6], 64)
+				liveData.zRotation, _ = strconv.ParseFloat(record[7], 64)
+				liveData.xRotationSpeed, _ = strconv.ParseFloat(record[8], 64)
+				liveData.yRotationSpeed, _ = strconv.ParseFloat(record[9], 64)
+				liveData.zRotationSpeed, _ = strconv.ParseFloat(record[10], 64)
+				liveData.xAcceleration, _ = strconv.ParseFloat(record[11], 64)
+				liveData.yAcceleration, _ = strconv.ParseFloat(record[12], 64)
+				liveData.zAcceleration, _ = strconv.ParseFloat(record[13], 64)
+				liveData.xVelocity, _ = strconv.ParseFloat(record[14], 64)
+				liveData.yVelocity, _ = strconv.ParseFloat(record[15], 64)
+				liveData.zVelocity, _ = strconv.ParseFloat(record[16], 64)
+			} else {
+				log.Println("Invalid number of fields")
+			}
+
+			updateVoltage(liveData.voltage)
+			updateStatus(string(liveData.status))
+			updateHeight(liveData.altitude)
+			updateMaxHeight(liveData.maxAltitude)
+		}
+	}()
+}
+
+func updateWebsocket(App fyne.App) {
+	if ws != nil {
+		err := ws.Close()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+	initWebsocket(App)
+}
+
+func getVoltage() float64 {
+	return liveData.voltage
+}
+
+func getStatus() Status {
+	return liveData.status
+}
+
+func getHeight() float64 {
+	return liveData.altitude
+}
+
+func getMaxHeight() float64 {
+	return liveData.maxAltitude
+}

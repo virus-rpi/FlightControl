@@ -10,11 +10,13 @@ import (
 
 func main() {
 	App := app.NewWithID("com.virusrpi.flightcontrol")
+	App.Settings().SetTheme(&FlightControlTheme{})
+	initWebsocket(App)
 	MainWindow := App.NewWindow("Flight Control")
 	MainWindow.Resize(fyne.NewSize(800, 600))
 	MainWindow.CenterOnScreen()
 
-	tabControl := container.NewTabItem("Control", controlTab(App))
+	tabControl := container.NewTabItem("Control", controlTab(App, MainWindow))
 	tabAnalysis := container.NewTabItem("Analysis", widget.NewLabel("Content of Tab 2"))
 	tabSimulation := container.NewTabItem("Simulation", widget.NewLabel("Content of Tab 3"))
 	tabSetting := container.NewTabItem("Settings", widget.NewLabel("Content of Tab 4"))
@@ -36,6 +38,7 @@ func main() {
 						return
 					}
 					App.Preferences().SetString("WaRaIP", ipEntry.Text)
+					updateWebsocket(App)
 				}, MainWindow)
 			}),
 		),
@@ -44,7 +47,9 @@ func main() {
 		),
 	)
 
-	MainWindow.SetMainMenu(mainMenu)
+	if !fyne.CurrentDevice().IsMobile() {
+		MainWindow.SetMainMenu(mainMenu)
+	}
 	MainWindow.SetContent(tabs)
 	MainWindow.ShowAndRun()
 }
