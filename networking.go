@@ -4,22 +4,13 @@ import (
 	"encoding/csv"
 	"fyne.io/fyne/v2"
 	"golang.org/x/net/websocket"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 )
-
-// TODO: Implement the following functions:
-// - reset
-// - openHatch
-// - startLogging
-// - recalculateGyro
-// - resetGyro
-// - getLog
-
-// These functions should make post or get requests to the WaRa server
-// To get the IP of the server, use App.Preferences().StringWithFallback("WaRaIP", "Not set")
 
 const (
 	StatusIdle             = "idle"
@@ -177,4 +168,83 @@ func getHeight() float64 {
 
 func getMaxHeight() float64 {
 	return liveData.maxAltitude
+}
+
+func post(postUrl url.URL) {
+	response, err := http.Post(postUrl.String(), "application/json", nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(response.Body)
+}
+
+func reset(App fyne.App) {
+	resetUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/reset"}
+	post(resetUrl)
+}
+
+func deployParachute(App fyne.App) {
+	deployParachuteUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/deploy/parachute"}
+	post(deployParachuteUrl)
+}
+
+func deployStage(App fyne.App) {
+	deployStageUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/deploy/stage"}
+	post(deployStageUrl)
+}
+
+func startLogging(App fyne.App) {
+	startLoggingUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/log/start"}
+	post(startLoggingUrl)
+}
+
+func stopLogging(App fyne.App) {
+	stopLoggingUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/log/stop"}
+	post(stopLoggingUrl)
+}
+
+func recalibrateGyro(App fyne.App) {
+	recalibrateGyroUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/recalibrate/gyroscope"}
+	post(recalibrateGyroUrl)
+}
+
+func recalibrateAccelerometer(App fyne.App) {
+	recalibrateAccelerometerUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/recalibrate/accelerometer"}
+	post(recalibrateAccelerometerUrl)
+}
+
+func recalibrateBarometer(App fyne.App) {
+	recalibrateBarometerUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/recalibrate/barometer"}
+	post(recalibrateBarometerUrl)
+}
+
+func resetMax(App fyne.App) {
+	resetMaxUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/reset/max"}
+	post(resetMaxUrl)
+}
+
+func resetMin(App fyne.App) {
+	resetMinUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/reset/min"}
+	post(resetMinUrl)
+}
+
+func resetGyro(App fyne.App) {
+	resetGyroUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/reset/gyroscope"}
+	post(resetGyroUrl)
+}
+
+func resetAccelerometer(App fyne.App) {
+	resetAccelerometerUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/reset/accelerometer"}
+	post(resetAccelerometerUrl)
+}
+
+func resetBarometer(App fyne.App) {
+	resetBarometerUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/reset/barometer"}
+	post(resetBarometerUrl)
 }
