@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fyne.io/fyne/v2"
 	"golang.org/x/net/websocket"
 	"io"
@@ -12,68 +13,8 @@ import (
 	"strings"
 )
 
-const (
-	StatusIdle             = "idle"
-	StatusArmed            = "armed"
-	StatusBoostedAscent    = "boosted-ascent"
-	StatusPoweredAscent    = "powered-ascent"
-	StatusUnpoweredAscent  = "unpowered-ascent"
-	StatusDescent          = "descent"
-	StatusParachuteDescent = "parachute-descent"
-	StatusLanded           = "landed"
-	StatusError            = "error"
-)
-
-type Status string
-
 var ws *websocket.Conn
 var done chan struct{}
-
-var liveData struct {
-	timestamp      string
-	voltage        float64
-	status         Status
-	altitude       float64
-	maxAltitude    float64
-	xRotation      float64
-	yRotation      float64
-	zRotation      float64
-	xRotationSpeed float64
-	yRotationSpeed float64
-	zRotationSpeed float64
-	xAcceleration  float64
-	yAcceleration  float64
-	zAcceleration  float64
-	xVelocity      float64
-	yVelocity      float64
-	zVelocity      float64
-}
-
-func toStatus(indexStr string) Status {
-	index, _ := strconv.Atoi(indexStr)
-	switch index {
-	case 0:
-		return StatusIdle
-	case 1:
-		return StatusArmed
-	case 2:
-		return StatusBoostedAscent
-	case 3:
-		return StatusPoweredAscent
-	case 4:
-		return StatusUnpoweredAscent
-	case 5:
-		return StatusDescent
-	case 6:
-		return StatusParachuteDescent
-	case 7:
-		return StatusLanded
-	case 8:
-		return StatusError
-	default:
-		return StatusError
-	}
-}
 
 func initWebsocket(App fyne.App) {
 	wsUrl := url.URL{Scheme: "ws", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/websocket"}
@@ -106,39 +47,12 @@ func initWebsocket(App fyne.App) {
 			}
 			log.Printf("Received: %s\n", msg)
 
-			reader := csv.NewReader(strings.NewReader(msg))
-			record, err := reader.Read()
-			if err != nil {
-				log.Println(err)
-				continue
-			}
+			parseCSVData(msg, &newestData)
 
-			if len(record) == 17 {
-				liveData.timestamp = record[0]
-				liveData.altitude, _ = strconv.ParseFloat(record[1], 64)
-				liveData.maxAltitude, _ = strconv.ParseFloat(record[2], 64)
-				liveData.status = toStatus(record[3])
-				liveData.voltage, _ = strconv.ParseFloat(record[4], 64)
-				liveData.xRotation, _ = strconv.ParseFloat(record[5], 64)
-				liveData.yRotation, _ = strconv.ParseFloat(record[6], 64)
-				liveData.zRotation, _ = strconv.ParseFloat(record[7], 64)
-				liveData.xRotationSpeed, _ = strconv.ParseFloat(record[8], 64)
-				liveData.yRotationSpeed, _ = strconv.ParseFloat(record[9], 64)
-				liveData.zRotationSpeed, _ = strconv.ParseFloat(record[10], 64)
-				liveData.xAcceleration, _ = strconv.ParseFloat(record[11], 64)
-				liveData.yAcceleration, _ = strconv.ParseFloat(record[12], 64)
-				liveData.zAcceleration, _ = strconv.ParseFloat(record[13], 64)
-				liveData.xVelocity, _ = strconv.ParseFloat(record[14], 64)
-				liveData.yVelocity, _ = strconv.ParseFloat(record[15], 64)
-				liveData.zVelocity, _ = strconv.ParseFloat(record[16], 64)
-			} else {
-				log.Println("Invalid number of fields")
-			}
-
-			updateVoltage(liveData.voltage)
-			updateStatus(string(liveData.status))
-			updateHeight(liveData.altitude)
-			updateMaxHeight(liveData.maxAltitude)
+			updateVoltage(newestData.voltage)
+			updateStatus(string(newestData.status))
+			updateHeight(newestData.altitude)
+			updateMaxHeight(newestData.maxAltitude)
 		}
 	}()
 }
@@ -154,22 +68,6 @@ func updateWebsocket(App fyne.App) {
 	initWebsocket(App)
 }
 
-func getVoltage() float64 {
-	return liveData.voltage
-}
-
-func getStatus() Status {
-	return liveData.status
-}
-
-func getHeight() float64 {
-	return liveData.altitude
-}
-
-func getMaxHeight() float64 {
-	return liveData.maxAltitude
-}
-
 func post(postUrl url.URL) {
 	response, err := http.Post(postUrl.String(), "application/json", nil)
 	if err != nil {
@@ -182,6 +80,28 @@ func post(postUrl url.URL) {
 			log.Println(err)
 		}
 	}(response.Body)
+}
+
+func get(getUrl url.URL) string {
+	response, err := http.Get(getUrl.String())
+	if err != nil {
+		log.Println(err)
+		return ""
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(response.Body)
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		log.Println(err)
+		return ""
+	}
+
+	return string(body)
 }
 
 func reset(App fyne.App) {
@@ -247,4 +167,169 @@ func resetAccelerometer(App fyne.App) {
 func resetBarometer(App fyne.App) {
 	resetBarometerUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/post/reset/barometer"}
 	post(resetBarometerUrl)
+}
+
+func getLog(App fyne.App) {
+	getLogUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/log"}
+	currentLog = parseCSVLog(get(getLogUrl))
+}
+
+func getLogById(App fyne.App, id int) {
+	getLogUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/log/" + string(rune(id))}
+	currentLog = parseCSVLog(get(getLogUrl))
+}
+
+func getLogList(App fyne.App) LogList {
+	getLogListUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/logs"}
+	logListString := get(getLogListUrl)
+	lines := strings.Split(logListString, "\n")
+	logList := make(LogList, len(lines))
+	for i, line := range lines {
+		reader := csv.NewReader(strings.NewReader(line))
+		record, err := reader.Read()
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+		id, err := strconv.Atoi(record[0])
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+		logList[i].id = id
+		logList[i].timestamp = record[1]
+	}
+	return logList
+}
+
+func getLoggingStatus(App fyne.App) LoggingStatus {
+	getLoggingStatusUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/log/status"}
+	return toLoggingStatus(get(getLoggingStatusUrl))
+}
+
+func getVoltage(App fyne.App) float64 {
+	getVoltageUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/voltage"}
+	voltageString := get(getVoltageUrl)
+	voltage, err := strconv.ParseFloat(voltageString, 64)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return voltage
+}
+
+func getStatus(App fyne.App) Status {
+	getStatusUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/status"}
+	return toStatus(get(getStatusUrl))
+}
+
+func getHeight(App fyne.App) float64 {
+	getHeightUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/altitude"}
+	heightString := get(getHeightUrl)
+	height, err := strconv.ParseFloat(heightString, 64)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return height
+}
+
+func getXAcceleration(App fyne.App) float64 {
+	getXAccelerationUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/acceleration/x"}
+	xAccelerationString := get(getXAccelerationUrl)
+	xAcceleration, err := strconv.ParseFloat(xAccelerationString, 64)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return xAcceleration
+}
+
+func getYAcceleration(App fyne.App) float64 {
+	getYAccelerationUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/acceleration/y"}
+	yAccelerationString := get(getYAccelerationUrl)
+	yAcceleration, err := strconv.ParseFloat(yAccelerationString, 64)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return yAcceleration
+}
+
+func getZAcceleration(App fyne.App) float64 {
+	getZAccelerationUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/acceleration/z"}
+	zAccelerationString := get(getZAccelerationUrl)
+	zAcceleration, err := strconv.ParseFloat(zAccelerationString, 64)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return zAcceleration
+}
+
+func getXRotation(App fyne.App) float64 {
+	getXRotationUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/rotation/x"}
+	xRotationString := get(getXRotationUrl)
+	xRotation, err := strconv.ParseFloat(xRotationString, 64)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return xRotation
+}
+
+func getYRotation(App fyne.App) float64 {
+	getYRotationUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/rotation/y"}
+	yRotationString := get(getYRotationUrl)
+	yRotation, err := strconv.ParseFloat(yRotationString, 64)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return yRotation
+}
+
+func getZRotation(App fyne.App) float64 {
+	getZRotationUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/rotation/z"}
+	zRotationString := get(getZRotationUrl)
+	zRotation, err := strconv.ParseFloat(zRotationString, 64)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return zRotation
+}
+
+func getSpacialData(App fyne.App) SpacialData {
+	getSpacialDataUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/spacial-data"}
+	spacialDataJsonString := get(getSpacialDataUrl)
+	var spacialData SpacialData
+	err := json.Unmarshal([]byte(spacialDataJsonString), &spacialData)
+	if err != nil {
+		log.Println(err)
+		return SpacialData{}
+	}
+	return spacialData
+}
+
+func getMaxAltitude(App fyne.App) float64 {
+	getMaxAltitudeUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/max/altitude"}
+	maxAltitudeString := get(getMaxAltitudeUrl)
+	maxAltitude, err := strconv.ParseFloat(maxAltitudeString, 64)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return maxAltitude
+}
+
+func getMinAltitude(App fyne.App) float64 {
+	getMinAltitudeUrl := url.URL{Scheme: "http", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/get/min/altitude"}
+	minAltitudeString := get(getMinAltitudeUrl)
+	minAltitude, err := strconv.ParseFloat(minAltitudeString, 64)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return minAltitude
 }

@@ -22,12 +22,12 @@ This is a description of the protocol used by the Water-Rocket to communicate wi
    - `error`: An error occurred (e.g. the parachute did not deploy)
 
 - `/get/altitude` - Get the current altitude of the Water-Rocket in m
-- `/get/x-acceleration` - Get the current x-acceleration of the Water-Rocket in m/s^2
-- `/get/y-acceleration` - Get the current y-acceleration of the Water-Rocket in m/s^2
-- `/get/z-acceleration` - Get the current z-acceleration of the Water-Rocket in m/s^2
-- `/get/x-rotation` - Get the current x-rotation of the Water-Rocket in deg/s
-- `/get/y-rotation` - Get the current y-rotation of the Water-Rocket in deg/s
-- `/get/z-rotation` - Get the current z-rotation of the Water-Rocket in deg/s
+- `/get/acceleration/x` - Get the current x-acceleration of the Water-Rocket in m/s^2
+- `/get/acceleration/y` - Get the current y-acceleration of the Water-Rocket in m/s^2
+- `/get/acceleration/z` - Get the current z-acceleration of the Water-Rocket in m/s^2
+- `/get/rotation/x` - Get the current x-rotation of the Water-Rocket in deg/s
+- `/get/rotation/y` - Get the current y-rotation of the Water-Rocket in deg/s
+- `/get/rotation/z` - Get the current z-rotation of the Water-Rocket in deg/s
 - `/get/spacial-data` - Get the current spacial data of the Water-Rocket. This includes the altitude, orientation, acceleration and velocity in x, y and z direction as json.
    Format:
    ```json
@@ -50,8 +50,19 @@ This is a description of the protocol used by the Water-Rocket to communicate wi
 - `/get/max/altitude` - Get the maximum altitude of the Water-Rocket
 - `/get/min/altitude` - Get the minimum altitude of the Water-Rocket
 - `/get/log` - Get the entire last log of the Water-Rocket
-- `/get/log/id` - Get the log with the given id
+   
+   Format: 
+   A long string with all data points in the same format as the websocket message seperated by newlines
+- `/get/log/{id}` - Get the log with the given id (id is a number)
+   
+    Format: 
+    Same as `/get/log`
 - `/get/logs` - Get a list of all logs and their ids
+  ```csv
+  id,timestamp\n
+  id,timestamp\n
+  id,timestamp\n
+   ```
 - `/get/logging-status` - Get the current logging status of the Water-Rocket
 
    Possible values:
