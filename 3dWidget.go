@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+const (
+	Width  = 800
+	Height = 600
+)
+
 type ThreeDWidget struct {
 	widget.BaseWidget
 	image  *canvas.Image
@@ -45,8 +50,7 @@ func (w *ThreeDWidget) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (w *ThreeDWidget) render() image.Image {
-	width, height := 800, 600
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	img := image.NewRGBA(image.Rect(0, 0, Width, Height))
 	draw.Draw(img, img.Bounds(), &image.Uniform{C: color.RGBA{A: 0}}, image.Point{}, draw.Src)
 
 	plane := NewPlane(1000, Point3D{X: 0, Y: 0, Z: 0}, Point3D{X: 0, Y: 0, Z: 0}, color.RGBA{G: 255, A: 255}, w)
@@ -206,8 +210,8 @@ func (camera *Camera) Project(point Point3D) Point2D {
 		translatedZ = 0.1
 	}
 
-	x2D := (translatedX*camera.FocalLength/translatedZ)*camera.Scale + 400
-	y2D := (translatedY*camera.FocalLength/translatedZ)*camera.Scale + 300
+	x2D := (translatedX*camera.FocalLength/translatedZ)*camera.Scale + Width/2
+	y2D := (translatedY*camera.FocalLength/translatedZ)*camera.Scale + Height/2
 
 	return Point2D{x2D, y2D}
 }
