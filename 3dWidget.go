@@ -60,6 +60,14 @@ func (w *ThreeDWidget) render() image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, int(Width), int(Height)))
 	draw.Draw(img, img.Bounds(), &image.Uniform{C: color.RGBA{A: 0}}, image.Point{}, draw.Src)
 
+	depthBuffer := make([][]float64, Height)
+	for i := range depthBuffer {
+		depthBuffer[i] = make([]float64, Width)
+		for j := range depthBuffer[i] {
+			depthBuffer[i][j] = math.MaxFloat64
+		}
+	}
+
 	var faces []FaceData
 	var wg3d sync.WaitGroup
 	wg3d.Add(len(w.objects))
@@ -105,7 +113,7 @@ func (w *ThreeDWidget) render() image.Image {
 	})
 
 	for _, face := range projectedFaces {
-		drawFace(img, face)
+		drawFace(img, face, depthBuffer)
 	}
 
 	return img
@@ -181,18 +189,18 @@ func (w *ThreeDWidget) RotateCameraAroundPoint(point Point3D, x, y, z float64) {
 	w.camera.Position = rotateZ(w.camera.Position, point, z)
 }
 
-func drawFace(img *image.RGBA, face ProjectedFaceData) {
-	drawFilledTriangle(img, face.face[0], face.face[1], face.face[2], face.color)
+func drawFace(img *image.RGBA, face ProjectedFaceData, depthBuffer [][]float64) {
+	drawFilledTriangle(img, face.face[0], face.face[1], face.face[2], face.color, depthBuffer, face.distance)
 
 	point1 := face.face[0]
 	point2 := face.face[1]
 	point3 := face.face[2]
-	drawLine(img, point1, point2, color.Black)
-	drawLine(img, point2, point3, color.Black)
-	drawLine(img, point3, point1, color.Black)
+	drawLine(img, point1, point2, color.Black, depthBuffer, face.distance)
+	drawLine(img, point2, point3, color.Black, depthBuffer, face.distance)
+	drawLine(img, point3, point1, color.Black, depthBuffer, face.distance)
 }
 
-func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color) {
+func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color, depthBuffer [][]float64, depth float64) {
 	x0 := point1.X
 	y0 := point1.Y
 	x1 := point2.X
@@ -210,7 +218,12 @@ func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color) {
 	err := dx - dy
 
 	for {
-		img.Set(int(x0), int(y0), lineColor)
+		if x0 >= 0 && x0 < Width && y0 >= 0 && y0 < Height {
+			if depth < depthBuffer[y0][x0] {
+				img.Set(int(x0), int(y0), lineColor)
+				depthBuffer[y0][x0] = depth
+			}
+		}
 		if x0 == x1 && y0 == y1 {
 			break
 		}
@@ -226,8 +239,7 @@ func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color) {
 	}
 }
 
-func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Color) {
-	// Sort the points by Y-coordinate
+func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Color, depthBuffer [][]float64, depth float64) {
 	if p2.Y < p1.Y {
 		p1, p2 = p2, p1
 	}
@@ -238,17 +250,20 @@ func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Col
 		p2, p3 = p3, p2
 	}
 
-	// Function to draw a horizontal line
 	drawHorizontalLine := func(y, x1, x2 int64, color color.Color) {
 		if x1 > x2 {
 			x1, x2 = x2, x1
 		}
 		for x := x1; x <= x2; x++ {
-			img.Set(int(x), int(y), color)
+			if y >= 0 && y < Height && x >= 0 && x < Width {
+				if depth < depthBuffer[y][x] {
+					img.Set(int(x), int(y), color)
+					depthBuffer[y][x] = depth
+				}
+			}
 		}
 	}
 
-	// Function to interpolate X coordinates
 	interpolateX := func(y, y1, y2, x1, x2 int64) int64 {
 		if y1 == y2 {
 			return x1
@@ -256,14 +271,12 @@ func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Col
 		return x1 + (x2-x1)*(y-y1)/(y2-y1)
 	}
 
-	// Draw the upper part of the triangle
 	for y := p1.Y; y <= p2.Y; y++ {
 		x1 := interpolateX(y, p1.Y, p2.Y, p1.X, p2.X)
 		x2 := interpolateX(y, p1.Y, p3.Y, p1.X, p3.X)
 		drawHorizontalLine(y, x1, x2, fillColor)
 	}
 
-	// Draw the lower part of the triangle
 	for y := p2.Y; y <= p3.Y; y++ {
 		x1 := interpolateX(y, p2.Y, p3.Y, p2.X, p3.X)
 		x2 := interpolateX(y, p1.Y, p3.Y, p1.X, p3.X)
