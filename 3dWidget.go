@@ -20,17 +20,21 @@ var (
 
 type ThreeDWidget struct {
 	widget.BaseWidget
-	image  *canvas.Image
-	angleX float64
-	angleY float64
-	angleZ float64
-	camera Camera
+	image   *canvas.Image
+	camera  Camera
+	objects []ThreeDShape
 }
 
 func NewThreeDWidget() *ThreeDWidget {
 	w := &ThreeDWidget{}
 	w.ExtendBaseWidget(w)
 	w.camera = NewCamera(Point3D{X: 0, Y: 500, Z: 200}, Point3D{X: 0}, 30, 10)
+
+	plane := NewPlane(1000, Point3D{X: 0, Y: 0, Z: 0}, Point3D{X: 0, Y: 0, Z: 0}, color.RGBA{G: 255, A: 255}, w)
+	cube := NewCube(100, Point3D{X: 0, Y: 0, Z: 100}, Point3D{X: 0, Y: 0, Z: 0}, color.RGBA{B: 255, A: 255}, w)
+
+	w.objects = []ThreeDShape{plane, cube}
+
 	w.image = canvas.NewImageFromImage(w.render())
 	go w.animate()
 	w.camera.PointAt(Point3D{X: 0, Y: 0, Z: 100})
@@ -42,7 +46,7 @@ func (w *ThreeDWidget) animate() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		w.angleZ += 1
+		w.objects[1].Rotation.Z += 1
 		w.image.Image = w.render()
 		canvas.Refresh(w.image)
 	}
@@ -56,33 +60,39 @@ func (w *ThreeDWidget) render() image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, int(Width), int(Height)))
 	draw.Draw(img, img.Bounds(), &image.Uniform{C: color.RGBA{A: 0}}, image.Point{}, draw.Src)
 
-	plane := NewPlane(1000, Point3D{X: 0, Y: 0, Z: 0}, Point3D{X: 0, Y: 0, Z: 0}, color.RGBA{G: 255, A: 255}, w)
-	cube := NewCube(100, Point3D{X: 0, Y: 0, Z: 100}, Point3D{X: w.angleX, Y: w.angleY, Z: w.angleZ}, color.RGBA{B: 255, A: 255}, w)
-
-	objects := []ThreeDShape{plane, cube}
-
-	var edges []struct {
+	type edgeData struct {
 		edge     [2]Point3D
 		color    color.Color
 		distance float64
 	}
 
-	getEdgesWaitGroup := sync.WaitGroup{}
-	getEdgesWaitGroup.Add(len(objects))
-	for _, object := range objects {
+	edgesChan := make(chan edgeData, len(w.objects)*100)
+
+	var wg sync.WaitGroup
+	for _, object := range w.objects {
+		wg.Add(1)
 		go func(object ThreeDShape) {
-			defer getEdgesWaitGroup.Done()
+			defer wg.Done()
 			objectEdges := object.GetEdges()
 			for _, edge := range objectEdges {
-				edges = append(edges, struct {
-					edge     [2]Point3D
-					color    color.Color
-					distance float64
-				}{edge: edge.edge, color: edge.color, distance: w.edgeDistance(edge.edge)})
+				edgesChan <- edgeData{
+					edge:     edge.edge,
+					color:    edge.color,
+					distance: w.edgeDistance(edge.edge),
+				}
 			}
 		}(object)
 	}
-	getEdgesWaitGroup.Wait()
+
+	go func() {
+		wg.Wait()
+		close(edgesChan)
+	}()
+
+	var edges []edgeData
+	for edge := range edgesChan {
+		edges = append(edges, edge)
+	}
 
 	sort.Slice(edges, func(i, j int) bool {
 		return edges[i].distance > edges[j].distance
@@ -117,16 +127,14 @@ func (w *ThreeDWidget) edgeDistance(edge [2]Point3D) float64 {
 
 func (w *ThreeDWidget) Dragged(event *fyne.DragEvent) {
 	w.RotateCameraAroundPoint(Point3D{X: 0, Y: 0, Z: 100}, float64(event.Dragged.DY/10), 0, float64(event.Dragged.DX/10))
-	w.PointCameraAt(Point3D{X: 0, Y: 0, Z: 100})
+	w.camera.PointAt(Point3D{X: 0, Y: 0, Z: 100})
 }
 
 func (w *ThreeDWidget) DragEnd() {}
 
 func (w *ThreeDWidget) Scrolled(event *fyne.ScrollEvent) {
 	w.camera.MoveForward(float64(event.Scrolled.DY) / 3)
-	w.PointCameraAt(Point3D{X: 0, Y: 0, Z: 100})
-	w.image.Image = w.render()
-	canvas.Refresh(w.image)
+	w.camera.PointAt(Point3D{X: 0, Y: 0, Z: 100})
 }
 
 type threeDRenderer struct {
@@ -161,30 +169,18 @@ func (w *ThreeDWidget) MoveCamera(dx, dy, dz float64) {
 	w.camera.Position.X += dx
 	w.camera.Position.Y += dy
 	w.camera.Position.Z += dz
-	w.image.Image = w.render()
-	canvas.Refresh(w.image)
 }
 
 func (w *ThreeDWidget) RotateCamera(dPitch, dYaw, dRoll float64) {
 	w.camera.Pitch += dPitch
 	w.camera.Yaw += dYaw
 	w.camera.Roll += dRoll
-	w.image.Image = w.render()
-	canvas.Refresh(w.image)
 }
 
 func (w *ThreeDWidget) RotateCameraAroundPoint(point Point3D, x, y, z float64) {
 	w.camera.Position = rotateX(w.camera.Position, point, x)
 	w.camera.Position = rotateY(w.camera.Position, point, y)
 	w.camera.Position = rotateZ(w.camera.Position, point, z)
-	w.image.Image = w.render()
-	canvas.Refresh(w.image)
-}
-
-func (w *ThreeDWidget) PointCameraAt(target Point3D) {
-	w.camera.PointAt(target)
-	w.image.Image = w.render()
-	canvas.Refresh(w.image)
 }
 
 func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color) {
