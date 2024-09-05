@@ -21,8 +21,8 @@ var (
 type ThreeDWidget struct {
 	widget.BaseWidget
 	image              *canvas.Image
-	camera             Camera
-	objects            []ThreeDShape
+	camera             *Camera
+	objects            []*ThreeDShape
 	animations         []func()
 	bgColor            color.Color
 	renderFaceOutlines bool
@@ -33,8 +33,9 @@ func NewThreeDWidget() *ThreeDWidget {
 	w.ExtendBaseWidget(w)
 	w.bgColor = color.Transparent
 	w.renderFaceOutlines = false
-	w.camera = NewCamera(Point3D{}, Point3D{}, 0, 0)
-	w.objects = []ThreeDShape{}
+	standardCamera := NewCamera(Point3D{}, Point3D{}, 0, 0)
+	w.camera = &standardCamera
+	w.objects = []*ThreeDShape{}
 	w.image = canvas.NewImageFromImage(w.render())
 	go w.animate()
 	return w
@@ -57,11 +58,11 @@ func (w *ThreeDWidget) RegisterAnimation(animation func()) {
 	w.animations = append(w.animations, animation)
 }
 
-func (w *ThreeDWidget) AddObject(object ThreeDShape) {
+func (w *ThreeDWidget) AddObject(object *ThreeDShape) {
 	w.objects = append(w.objects, object)
 }
 
-func (w *ThreeDWidget) SetCamera(camera Camera) {
+func (w *ThreeDWidget) SetCamera(camera *Camera) {
 	w.camera = camera
 }
 
@@ -93,7 +94,7 @@ func (w *ThreeDWidget) render() image.Image {
 	var wg3d sync.WaitGroup
 	wg3d.Add(len(w.objects))
 	for _, object := range w.objects {
-		go func(object ThreeDShape) {
+		go func(object *ThreeDShape) {
 			defer wg3d.Done()
 			objectFaces := object.GetFaces()
 			for _, face := range objectFaces {
