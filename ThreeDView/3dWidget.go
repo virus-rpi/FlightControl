@@ -124,9 +124,7 @@ func (w *ThreeDWidget) render() image.Image {
 			p2 := w.camera.Project(face.face[1])
 			p3 := w.camera.Project(face.face[2])
 
-			if (p1.X < 0 || p1.X >= Width || p1.Y < 0 || p1.Y >= Height) &&
-				(p2.X < 0 || p2.X >= Width || p2.Y < 0 || p2.Y >= Height) &&
-				(p3.X < 0 || p3.X >= Width || p3.Y < 0 || p3.Y >= Height) {
+			if !p1.InBounds() && !p2.InBounds() && !p3.InBounds() {
 				return
 			}
 
@@ -145,26 +143,11 @@ func (w *ThreeDWidget) render() image.Image {
 		drawFace(img, face, depthBuffer, w.renderFaceOutlines, w.renderFaceColors)
 	}
 
-	drawLine(img, Point2D{X: 0, Y: Height / 2}, Point2D{X: Width, Y: Height / 2}, color.RGBA{R: 255}, depthBuffer, 0)
-	drawLine(img, Point2D{X: Width / 2, Y: 0}, Point2D{X: Width / 2, Y: Height}, color.RGBA{R: 255}, depthBuffer, 0)
-
 	return img
 }
 
-func (w *ThreeDWidget) faceDistance(face [3]Point3D) float64 {
-	cameraPos := w.camera.Position
-
-	normalPos := Point3D{
-		X: (face[0].X + face[1].X + face[2].X) / 3,
-		Y: (face[0].Y + face[1].Y + face[2].Y) / 3,
-		Z: (face[0].Z + face[1].Z + face[2].Z) / 3,
-	}
-
-	return math.Sqrt(math.Pow(normalPos.X-cameraPos.X, 2) + math.Pow(normalPos.Y-cameraPos.Y, 2) + math.Pow(normalPos.Z-cameraPos.Z, 2))
-}
-
 func (w *ThreeDWidget) Dragged(event *fyne.DragEvent) {
-	w.RotateCameraAroundPoint(Point3D{X: 0, Y: 0, Z: 100}, float64(event.Dragged.DY/10), 0, float64(event.Dragged.DX/10))
+	w.camera.Position.Rotate(Point3D{X: 0, Y: 0, Z: 100}, float64(event.Dragged.DY)/10, 0, float64(event.Dragged.DX)/10)
 	w.camera.PointAt(Point3D{X: 0, Y: 0, Z: 100})
 }
 
@@ -193,33 +176,11 @@ func (r *threeDRenderer) Refresh() {
 	canvas.Refresh(r.image)
 }
 
-func (r *threeDRenderer) BackgroundColor() color.Color {
-	return color.Transparent
-}
-
 func (r *threeDRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{r.image}
 }
 
 func (r *threeDRenderer) Destroy() {}
-
-func (w *ThreeDWidget) MoveCamera(dx, dy, dz float64) {
-	w.camera.Position.X += dx
-	w.camera.Position.Y += dy
-	w.camera.Position.Z += dz
-}
-
-func (w *ThreeDWidget) RotateCamera(dPitch, dYaw, dRoll float64) {
-	w.camera.Pitch += dPitch
-	w.camera.Yaw += dYaw
-	w.camera.Roll += dRoll
-}
-
-func (w *ThreeDWidget) RotateCameraAroundPoint(point Point3D, x, y, z float64) {
-	w.camera.Position = rotateX(w.camera.Position, point, x)
-	w.camera.Position = rotateY(w.camera.Position, point, y)
-	w.camera.Position = rotateZ(w.camera.Position, point, z)
-}
 
 func drawFace(img *image.RGBA, face ProjectedFaceData, depthBuffer [][]float64, renderFaceOutlines bool, renderFaceColors bool) {
 	if renderFaceColors {
@@ -338,38 +299,14 @@ func degreesToRadians(degrees float64) float64 {
 	return degrees * math.Pi / 180
 }
 
-func rotateX(point, pivot Point3D, degrees float64) Point3D {
-	radians := degreesToRadians(degrees)
-	translatedY := point.Y - pivot.Y
-	translatedZ := point.Z - pivot.Z
-	newY := translatedY*math.Cos(radians) - translatedZ*math.Sin(radians)
-	newZ := translatedY*math.Sin(radians) + translatedZ*math.Cos(radians)
-	newY += pivot.Y
-	newZ += pivot.Z
+func (w *ThreeDWidget) faceDistance(face [3]Point3D) float64 {
+	cameraPos := w.camera.Position
 
-	return Point3D{X: point.X, Y: newY, Z: newZ}
-}
+	normalPos := Point3D{
+		X: (face[0].X + face[1].X + face[2].X) / 3,
+		Y: (face[0].Y + face[1].Y + face[2].Y) / 3,
+		Z: (face[0].Z + face[1].Z + face[2].Z) / 3,
+	}
 
-func rotateY(point, pivot Point3D, degrees float64) Point3D {
-	radians := degreesToRadians(degrees)
-	translatedX := point.X - pivot.X
-	translatedZ := point.Z - pivot.Z
-	newX := translatedX*math.Cos(radians) + translatedZ*math.Sin(radians)
-	newZ := -translatedX*math.Sin(radians) + translatedZ*math.Cos(radians)
-	newX += pivot.X
-	newZ += pivot.Z
-
-	return Point3D{X: newX, Y: point.Y, Z: newZ}
-}
-
-func rotateZ(point, pivot Point3D, degrees float64) Point3D {
-	radians := degreesToRadians(degrees)
-	translatedX := point.X - pivot.X
-	translatedY := point.Y - pivot.Y
-	newX := translatedX*math.Cos(radians) - translatedY*math.Sin(radians)
-	newY := translatedX*math.Sin(radians) + translatedY*math.Cos(radians)
-	newX += pivot.X
-	newY += pivot.Y
-
-	return Point3D{X: newX, Y: newY, Z: point.Z}
+	return math.Sqrt(math.Pow(normalPos.X-cameraPos.X, 2) + math.Pow(normalPos.Y-cameraPos.Y, 2) + math.Pow(normalPos.Z-cameraPos.Z, 2))
 }

@@ -16,12 +16,9 @@ func simulationTab() fyne.CanvasObject {
 	threeDEnv.AddObject(&cube)
 	threeDEnv.SetCamera(&camera)
 	camera.PointAt(ThreeDView.Point3D{X: 0, Y: 0, Z: 100})
-	//threeDEnv.SetRenderFaceColors(false)
-	threeDEnv.SetRenderFaceOutlines(true)
 
 	threeDEnv.RegisterAnimation(func() {
-		cube.Rotation.Z += 1
-		threeDEnv.Refresh()
+		cube.RotateZ(3)
 	})
 
 	return threeDEnv

@@ -22,7 +22,7 @@ func NewCube(size float64, position Point3D, rotation Point3D, color color.Color
 		Position: position,
 		Rotation: rotation,
 		color:    color,
-		w:        w,
+		widget:   w,
 	}
 }
 
@@ -59,6 +59,6 @@ func NewPlane(size float64, position Point3D, rotation Point3D, color color.Colo
 		Position: position,
 		Rotation: rotation,
 		color:    color,
-		w:        w,
+		widget:   w,
 	}
 }
