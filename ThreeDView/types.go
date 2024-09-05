@@ -115,7 +115,24 @@ func (camera *Camera) PointAt(target Point3D) {
 	direction.Z /= length
 
 	camera.Pitch = math.Asin(-direction.Y) * (180 / math.Pi)
-	camera.Yaw = math.Atan2(direction.X, direction.Z) * (180 / math.Pi)
+	camera.Yaw = math.Atan2(direction.X, direction.Z) * (-180 / math.Pi)
+
+	up := Point3D{X: 0, Y: 0, Z: 1}
+	right := Point3D{
+		X: direction.Y*up.Z - direction.Z*up.Y,
+		Y: direction.Z*up.X - direction.X*up.Z,
+		Z: direction.X*up.Y - direction.Y*up.X,
+	}
+	rightLength := math.Sqrt(right.X*right.X + right.Y*right.Y + right.Z*right.Z)
+	right.X /= rightLength
+	right.Y /= rightLength
+	right.Z /= rightLength
+	correctedUp := Point3D{
+		X: right.Y*direction.Z - right.Z*direction.Y,
+		Y: right.Z*direction.X - right.X*direction.Z,
+		Z: right.X*direction.Y - right.Y*direction.X,
+	}
+	camera.Roll = math.Atan2(correctedUp.X, correctedUp.Y)*(-180/math.Pi) + 180
 }
 
 func (camera *Camera) MoveForward(distance float64) {
@@ -128,4 +145,34 @@ func (camera *Camera) MoveForward(distance float64) {
 	camera.Position.X += direction.X * distance
 	camera.Position.Y += direction.Y * distance
 	camera.Position.Z += direction.Z * distance
+}
+
+func (camera *Camera) IsPointInFrustum(point Point3D) bool {
+	pitch := degreesToRadians(camera.Pitch)
+	yaw := degreesToRadians(camera.Yaw)
+	roll := degreesToRadians(camera.Roll)
+
+	relativePosition := Point3D{
+		X: point.X - camera.Position.X,
+		Y: point.Y - camera.Position.Y,
+		Z: point.Z - camera.Position.Z,
+	}
+
+	rotatedPoint := rotateY(relativePosition, camera.Position, -yaw)
+	rotatedPoint = rotateX(rotatedPoint, camera.Position, -pitch)
+	rotatedPoint = rotateZ(rotatedPoint, camera.Position, -roll)
+
+	fovX := math.Atan(float64(Width) / (2 * camera.FocalLength))
+	fovY := math.Atan(float64(Height) / (2 * camera.FocalLength))
+
+	if rotatedPoint.Z > 0 {
+		return false
+	}
+	if rotatedPoint.X < -rotatedPoint.Z*math.Tan(fovX) || rotatedPoint.X > rotatedPoint.Z*math.Tan(fovX) {
+		return false
+	}
+	if rotatedPoint.Y < -rotatedPoint.Z*math.Tan(fovY) || rotatedPoint.Y > rotatedPoint.Z*math.Tan(fovY) {
+		return false
+	}
+	return true
 }

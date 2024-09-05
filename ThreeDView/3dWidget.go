@@ -26,6 +26,7 @@ type ThreeDWidget struct {
 	animations         []func()
 	bgColor            color.Color
 	renderFaceOutlines bool
+	renderFaceColors   bool
 }
 
 func NewThreeDWidget() *ThreeDWidget {
@@ -33,6 +34,7 @@ func NewThreeDWidget() *ThreeDWidget {
 	w.ExtendBaseWidget(w)
 	w.bgColor = color.Transparent
 	w.renderFaceOutlines = false
+	w.renderFaceColors = true
 	standardCamera := NewCamera(Point3D{}, Point3D{}, 0, 0)
 	w.camera = &standardCamera
 	w.objects = []*ThreeDShape{}
@@ -74,6 +76,10 @@ func (w *ThreeDWidget) SetRenderFaceOutlines(newVal bool) {
 	w.renderFaceOutlines = newVal
 }
 
+func (w *ThreeDWidget) SetRenderFaceColors(newVal bool) {
+	w.renderFaceColors = newVal
+}
+
 func (w *ThreeDWidget) CreateRenderer() fyne.WidgetRenderer {
 	return &threeDRenderer{image: w.image}
 }
@@ -92,13 +98,16 @@ func (w *ThreeDWidget) render() image.Image {
 
 	var faces []FaceData
 	var wg3d sync.WaitGroup
+	var mu3d sync.Mutex
 	wg3d.Add(len(w.objects))
 	for _, object := range w.objects {
 		go func(object *ThreeDShape) {
 			defer wg3d.Done()
 			objectFaces := object.GetFaces()
 			for _, face := range objectFaces {
+				mu3d.Lock()
 				faces = append(faces, FaceData{face: face.face, color: face.color, distance: w.faceDistance(face.face)})
+				mu3d.Unlock()
 			}
 		}(object)
 	}
@@ -115,11 +124,9 @@ func (w *ThreeDWidget) render() image.Image {
 			p2 := w.camera.Project(face.face[1])
 			p3 := w.camera.Project(face.face[2])
 
-			p1InBounds := p1.X >= 0 && p1.X < Width && p1.Y >= 0 && p1.Y < Height
-			p2InBounds := p2.X >= 0 && p2.X < Width && p2.Y >= 0 && p2.Y < Height
-			p3InBounds := p3.X >= 0 && p3.X < Width && p3.Y >= 0 && p3.Y < Height
-
-			if !p1InBounds && !p2InBounds && !p3InBounds {
+			if (p1.X < 0 || p1.X >= Width || p1.Y < 0 || p1.Y >= Height) &&
+				(p2.X < 0 || p2.X >= Width || p2.Y < 0 || p2.Y >= Height) &&
+				(p3.X < 0 || p3.X >= Width || p3.Y < 0 || p3.Y >= Height) {
 				return
 			}
 
@@ -135,8 +142,11 @@ func (w *ThreeDWidget) render() image.Image {
 	})
 
 	for _, face := range projectedFaces {
-		drawFace(img, face, depthBuffer, w.renderFaceOutlines)
+		drawFace(img, face, depthBuffer, w.renderFaceOutlines, w.renderFaceColors)
 	}
+
+	drawLine(img, Point2D{X: 0, Y: Height / 2}, Point2D{X: Width, Y: Height / 2}, color.RGBA{R: 255}, depthBuffer, 0)
+	drawLine(img, Point2D{X: Width / 2, Y: 0}, Point2D{X: Width / 2, Y: Height}, color.RGBA{R: 255}, depthBuffer, 0)
 
 	return img
 }
@@ -211,18 +221,26 @@ func (w *ThreeDWidget) RotateCameraAroundPoint(point Point3D, x, y, z float64) {
 	w.camera.Position = rotateZ(w.camera.Position, point, z)
 }
 
-func drawFace(img *image.RGBA, face ProjectedFaceData, depthBuffer [][]float64, renderFaceOutlines bool) {
-	drawFilledTriangle(img, face.face[0], face.face[1], face.face[2], face.color, depthBuffer, face.distance)
+func drawFace(img *image.RGBA, face ProjectedFaceData, depthBuffer [][]float64, renderFaceOutlines bool, renderFaceColors bool) {
+	if renderFaceColors {
+		drawFilledTriangle(img, face.face[0], face.face[1], face.face[2], face.color, depthBuffer, face.distance)
+	}
 
 	if !renderFaceOutlines {
 		return
 	}
+	var outlineColor color.Color
+	if !renderFaceColors {
+		outlineColor = face.color
+	} else {
+		outlineColor = color.Black
+	}
 	point1 := face.face[0]
 	point2 := face.face[1]
 	point3 := face.face[2]
-	drawLine(img, point1, point2, color.Black, depthBuffer, face.distance)
-	drawLine(img, point2, point3, color.Black, depthBuffer, face.distance)
-	drawLine(img, point3, point1, color.Black, depthBuffer, face.distance)
+	drawLine(img, point1, point2, outlineColor, depthBuffer, face.distance)
+	drawLine(img, point2, point3, outlineColor, depthBuffer, face.distance)
+	drawLine(img, point3, point1, outlineColor, depthBuffer, face.distance)
 }
 
 func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color, depthBuffer [][]float64, depth float64) {
