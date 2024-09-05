@@ -60,76 +60,67 @@ func (w *ThreeDWidget) render() image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, int(Width), int(Height)))
 	draw.Draw(img, img.Bounds(), &image.Uniform{C: color.RGBA{A: 0}}, image.Point{}, draw.Src)
 
-	type edgeData struct {
-		edge     [2]Point3D
-		color    color.Color
-		distance float64
-	}
-
-	var edges []edgeData
+	var faces []FaceData
 	var wg3d sync.WaitGroup
 	wg3d.Add(len(w.objects))
 	for _, object := range w.objects {
 		go func(object ThreeDShape) {
 			defer wg3d.Done()
-			objectEdges := object.GetEdges()
-			for _, edge := range objectEdges {
-				edges = append(edges, edgeData{edge: edge.edge, color: edge.color, distance: w.edgeDistance(edge.edge)})
+			objectFaces := object.GetFaces()
+			for _, face := range objectFaces {
+				faces = append(faces, FaceData{face: face.face, color: face.color, distance: w.faceDistance(face.face)})
 			}
 		}(object)
 	}
 	wg3d.Wait()
 
-	type edge2DData struct {
-		start    Point2D
-		end      Point2D
-		color    color.Color
-		distance float64
-	}
-
-	var twoDEdges []edge2DData
+	var projectedFaces []ProjectedFaceData
 	var wg2d sync.WaitGroup
-	wg2d.Add(len(edges))
+	wg2d.Add(len(faces))
 	var mu sync.Mutex
-	for _, edge := range edges {
-		go func(edge edgeData) {
+	for _, face := range faces {
+		go func(face FaceData) {
 			defer wg2d.Done()
-			start := w.camera.Project(edge.edge[0])
-			end := w.camera.Project(edge.edge[1])
+			p1 := w.camera.Project(face.face[0])
+			p2 := w.camera.Project(face.face[1])
+			p3 := w.camera.Project(face.face[2])
 
-			startInBounds := start.X >= 0 && start.X < Width && start.Y >= 0 && start.Y < Height
-			endInBounds := end.X >= 0 && end.X < Width && end.Y >= 0 && end.Y < Height
+			p1InBounds := p1.X >= 0 && p1.X < Width && p1.Y >= 0 && p1.Y < Height
+			p2InBounds := p2.X >= 0 && p2.X < Width && p2.Y >= 0 && p2.Y < Height
+			p3InBounds := p3.X >= 0 && p3.X < Width && p3.Y >= 0 && p3.Y < Height
 
-			if !startInBounds && !endInBounds {
+			if !p1InBounds && !p2InBounds && !p3InBounds {
 				return
 			}
+
 			mu.Lock()
-			if !startInBounds {
-				twoDEdges = append(twoDEdges, edge2DData{start: end, end: start, color: edge.color, distance: edge.distance})
-			} else {
-				twoDEdges = append(twoDEdges, edge2DData{start: start, end: end, color: edge.color, distance: edge.distance})
-			}
+			projectedFaces = append(projectedFaces, ProjectedFaceData{face: [3]Point2D{p1, p2, p3}, color: face.color, distance: face.distance})
 			mu.Unlock()
-		}(edge)
+		}(face)
 	}
 	wg2d.Wait()
 
-	sort.Slice(twoDEdges, func(i, j int) bool {
-		return twoDEdges[i].distance > twoDEdges[j].distance
+	sort.Slice(projectedFaces, func(i, j int) bool {
+		return projectedFaces[i].distance > projectedFaces[j].distance
 	})
 
-	for _, edge := range twoDEdges {
-		drawLine(img, edge.start, edge.end, edge.color)
+	for _, face := range projectedFaces {
+		drawFace(img, face)
 	}
 
 	return img
 }
 
-func (w *ThreeDWidget) edgeDistance(edge [2]Point3D) float64 {
+func (w *ThreeDWidget) faceDistance(face [3]Point3D) float64 {
 	cameraPos := w.camera.Position
-	dist1 := math.Sqrt(math.Pow(edge[0].X-cameraPos.X, 2) + math.Pow(edge[0].Y-cameraPos.Y, 2) + math.Pow(edge[0].Z-cameraPos.Z, 2))
-	dist2 := math.Sqrt(math.Pow(edge[1].X-cameraPos.X, 2) + math.Pow(edge[1].Y-cameraPos.Y, 2) + math.Pow(edge[1].Z-cameraPos.Z, 2))
-	return (dist1 + dist2) / 2
+
+	normalPos := Point3D{
+		X: (face[0].X + face[1].X + face[2].X) / 3,
+		Y: (face[0].Y + face[1].Y + face[2].Y) / 3,
+		Z: (face[0].Z + face[1].Z + face[2].Z) / 3,
+	}
+
+	return math.Sqrt(math.Pow(normalPos.X-cameraPos.X, 2) + math.Pow(normalPos.Y-cameraPos.Y, 2) + math.Pow(normalPos.Z-cameraPos.Z, 2))
 }
 
 func (w *ThreeDWidget) Dragged(event *fyne.DragEvent) {
@@ -190,6 +181,17 @@ func (w *ThreeDWidget) RotateCameraAroundPoint(point Point3D, x, y, z float64) {
 	w.camera.Position = rotateZ(w.camera.Position, point, z)
 }
 
+func drawFace(img *image.RGBA, face ProjectedFaceData) {
+	drawFilledTriangle(img, face.face[0], face.face[1], face.face[2], face.color)
+
+	point1 := face.face[0]
+	point2 := face.face[1]
+	point3 := face.face[2]
+	drawLine(img, point1, point2, color.Black)
+	drawLine(img, point2, point3, color.Black)
+	drawLine(img, point3, point1, color.Black)
+}
+
 func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color) {
 	x0 := point1.X
 	y0 := point1.Y
@@ -221,6 +223,51 @@ func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color) {
 			err += dx
 			y0 += sy
 		}
+	}
+}
+
+func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Color) {
+	// Sort the points by Y-coordinate
+	if p2.Y < p1.Y {
+		p1, p2 = p2, p1
+	}
+	if p3.Y < p1.Y {
+		p1, p3 = p3, p1
+	}
+	if p3.Y < p2.Y {
+		p2, p3 = p3, p2
+	}
+
+	// Function to draw a horizontal line
+	drawHorizontalLine := func(y, x1, x2 int64, color color.Color) {
+		if x1 > x2 {
+			x1, x2 = x2, x1
+		}
+		for x := x1; x <= x2; x++ {
+			img.Set(int(x), int(y), color)
+		}
+	}
+
+	// Function to interpolate X coordinates
+	interpolateX := func(y, y1, y2, x1, x2 int64) int64 {
+		if y1 == y2 {
+			return x1
+		}
+		return x1 + (x2-x1)*(y-y1)/(y2-y1)
+	}
+
+	// Draw the upper part of the triangle
+	for y := p1.Y; y <= p2.Y; y++ {
+		x1 := interpolateX(y, p1.Y, p2.Y, p1.X, p2.X)
+		x2 := interpolateX(y, p1.Y, p3.Y, p1.X, p3.X)
+		drawHorizontalLine(y, x1, x2, fillColor)
+	}
+
+	// Draw the lower part of the triangle
+	for y := p2.Y; y <= p3.Y; y++ {
+		x1 := interpolateX(y, p2.Y, p3.Y, p2.X, p3.X)
+		x2 := interpolateX(y, p1.Y, p3.Y, p1.X, p3.X)
+		drawHorizontalLine(y, x1, x2, fillColor)
 	}
 }
 
@@ -301,11 +348,23 @@ type Point2D struct {
 
 type ThreeDShape struct {
 	Vertices []Point3D
-	Edges    [][2]int
+	Faces    [][3]int
 	Rotation Point3D
 	Position Point3D
 	color    color.Color
 	w        *ThreeDWidget
+}
+
+type FaceData struct {
+	face     [3]Point3D
+	color    color.Color
+	distance float64
+}
+
+type ProjectedFaceData struct {
+	face     [3]Point2D
+	color    color.Color
+	distance float64
 }
 
 func NewCube(size float64, position Point3D, rotation Point3D, color color.Color, w *ThreeDWidget) ThreeDShape {
@@ -317,10 +376,13 @@ func NewCube(size float64, position Point3D, rotation Point3D, color color.Color
 			{-half, -half, half}, {half, -half, half},
 			{half, half, half}, {-half, half, half},
 		},
-		Edges: [][2]int{
-			{0, 1}, {1, 2}, {2, 3}, {3, 0},
-			{4, 5}, {5, 6}, {6, 7}, {7, 4},
-			{0, 4}, {1, 5}, {2, 6}, {3, 7},
+		Faces: [][3]int{
+			{0, 1, 2}, {0, 2, 3},
+			{4, 5, 6}, {4, 6, 7},
+			{0, 1, 5}, {0, 5, 4},
+			{3, 2, 6}, {3, 6, 7},
+			{0, 3, 7}, {0, 7, 4},
+			{1, 2, 6}, {1, 6, 5},
 		},
 		Position: position,
 		Rotation: rotation,
@@ -334,7 +396,7 @@ func NewPlane(size float64, position Point3D, rotation Point3D, color color.Colo
 	half := size / 2
 	numVertices := (gridSize + 1) * (gridSize + 1)
 	vertices := make([]Point3D, numVertices)
-	edges := make([][2]int, 0)
+	faces := make([][3]int, gridSize*gridSize*2)
 
 	index := 0
 	for i := 0; i <= gridSize; i++ {
@@ -346,16 +408,17 @@ func NewPlane(size float64, position Point3D, rotation Point3D, color color.Colo
 		}
 	}
 
-	for i := 0; i <= gridSize; i++ {
+	for i := 0; i < gridSize; i++ {
 		for j := 0; j < gridSize; j++ {
-			edges = append(edges, [2]int{i*(gridSize+1) + j, i*(gridSize+1) + j + 1})
-			edges = append(edges, [2]int{j*(gridSize+1) + i, (j+1)*(gridSize+1) + i})
+			index = i*(gridSize+1) + j
+			faces[i*gridSize*2+j*2] = [3]int{index, index + 1, index + gridSize + 1}
+			faces[i*gridSize*2+j*2+1] = [3]int{index + 1, index + gridSize + 2, index + gridSize + 1}
 		}
 	}
 
 	return ThreeDShape{
 		Vertices: vertices,
-		Edges:    edges,
+		Faces:    faces,
 		Position: position,
 		Rotation: rotation,
 		color:    color,
@@ -363,42 +426,40 @@ func NewPlane(size float64, position Point3D, rotation Point3D, color color.Colo
 	}
 }
 
-func (shape *ThreeDShape) GetEdges() []struct {
-	edge  [2]Point3D
-	color color.Color
-} {
-	edges := make([]struct {
-		edge  [2]Point3D
-		color color.Color
-	}, len(shape.Edges))
+func (shape *ThreeDShape) GetFaces() []FaceData {
+	faces := make([]FaceData, len(shape.Faces))
+	for i, face := range shape.Faces {
+		p1 := shape.Vertices[face[0]]
+		p2 := shape.Vertices[face[1]]
+		p3 := shape.Vertices[face[2]]
 
-	for i, edge := range shape.Edges {
-		start := shape.Vertices[edge[0]]
-		end := shape.Vertices[edge[1]]
+		p1 = rotateX(p1, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.X)
+		p1 = rotateY(p1, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.Y)
+		p1 = rotateZ(p1, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.Z)
 
-		start = rotateX(start, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.X)
-		start = rotateY(start, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.Y)
-		start = rotateZ(start, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.Z)
+		p2 = rotateX(p2, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.X)
+		p2 = rotateY(p2, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.Y)
+		p2 = rotateZ(p2, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.Z)
 
-		end = rotateX(end, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.X)
-		end = rotateY(end, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.Y)
-		end = rotateZ(end, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.Z)
+		p3 = rotateX(p3, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.X)
+		p3 = rotateY(p3, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.Y)
+		p3 = rotateZ(p3, Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.Z)
 
-		start.X += shape.Position.X
-		start.Y += shape.Position.Y
-		start.Z += shape.Position.Z
+		p1.X += shape.Position.X
+		p1.Y += shape.Position.Y
+		p1.Z += shape.Position.Z
 
-		end.X += shape.Position.X
-		end.Y += shape.Position.Y
-		end.Z += shape.Position.Z
+		p2.X += shape.Position.X
+		p2.Y += shape.Position.Y
+		p2.Z += shape.Position.Z
 
-		edges[i] = struct {
-			edge  [2]Point3D
-			color color.Color
-		}{edge: [2]Point3D{start, end}, color: shape.color}
+		p3.X += shape.Position.X
+		p3.Y += shape.Position.Y
+		p3.Z += shape.Position.Z
+
+		faces[i] = FaceData{face: [3]Point3D{p1, p2, p3}, color: shape.color, distance: 0}
 	}
-
-	return edges
+	return faces
 }
 
 func degreesToRadians(degrees float64) float64 {
