@@ -66,53 +66,60 @@ func (w *ThreeDWidget) render() image.Image {
 		distance float64
 	}
 
-	edgesChan := make(chan edgeData, len(w.objects)*100)
-
-	var wg sync.WaitGroup
+	var edges []edgeData
+	var wg3d sync.WaitGroup
+	wg3d.Add(len(w.objects))
 	for _, object := range w.objects {
-		wg.Add(1)
 		go func(object ThreeDShape) {
-			defer wg.Done()
+			defer wg3d.Done()
 			objectEdges := object.GetEdges()
 			for _, edge := range objectEdges {
-				edgesChan <- edgeData{
-					edge:     edge.edge,
-					color:    edge.color,
-					distance: w.edgeDistance(edge.edge),
-				}
+				edges = append(edges, edgeData{edge: edge.edge, color: edge.color, distance: w.edgeDistance(edge.edge)})
 			}
 		}(object)
 	}
+	wg3d.Wait()
 
-	go func() {
-		wg.Wait()
-		close(edgesChan)
-	}()
-
-	var edges []edgeData
-	for edge := range edgesChan {
-		edges = append(edges, edge)
+	type edge2DData struct {
+		start    Point2D
+		end      Point2D
+		color    color.Color
+		distance float64
 	}
 
-	sort.Slice(edges, func(i, j int) bool {
-		return edges[i].distance > edges[j].distance
+	var twoDEdges []edge2DData
+	var wg2d sync.WaitGroup
+	wg2d.Add(len(edges))
+	var mu sync.Mutex
+	for _, edge := range edges {
+		go func(edge edgeData) {
+			defer wg2d.Done()
+			start := w.camera.Project(edge.edge[0])
+			end := w.camera.Project(edge.edge[1])
+
+			startInBounds := start.X >= 0 && start.X < Width && start.Y >= 0 && start.Y < Height
+			endInBounds := end.X >= 0 && end.X < Width && end.Y >= 0 && end.Y < Height
+
+			if !startInBounds && !endInBounds {
+				return
+			}
+			mu.Lock()
+			if !startInBounds {
+				twoDEdges = append(twoDEdges, edge2DData{start: end, end: start, color: edge.color, distance: edge.distance})
+			} else {
+				twoDEdges = append(twoDEdges, edge2DData{start: start, end: end, color: edge.color, distance: edge.distance})
+			}
+			mu.Unlock()
+		}(edge)
+	}
+	wg2d.Wait()
+
+	sort.Slice(twoDEdges, func(i, j int) bool {
+		return twoDEdges[i].distance > twoDEdges[j].distance
 	})
 
-	for _, edge := range edges {
-		start := w.camera.Project(edge.edge[0])
-		end := w.camera.Project(edge.edge[1])
-
-		startInBounds := start.X >= 0 && start.X < Width && start.Y >= 0 && start.Y < Height
-		endInBounds := end.X >= 0 && end.X < Width && end.Y >= 0 && end.Y < Height
-
-		if !startInBounds && !endInBounds {
-			continue
-		}
-		if !startInBounds {
-			drawLine(img, end, start, edge.color)
-		} else {
-			drawLine(img, start, end, edge.color)
-		}
+	for _, edge := range twoDEdges {
+		drawLine(img, edge.start, edge.end, edge.color)
 	}
 
 	return img
