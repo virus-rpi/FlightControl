@@ -87,20 +87,18 @@ type ProjectedFaceData struct {
 }
 
 type ThreeDShape struct {
-	Vertices []Point3D
-	Faces    [][3]int
+	Faces    []FaceData
 	Rotation Point3D
 	Position Point3D
-	color    color.Color
 	widget   *ThreeDWidget
 }
 
 func (shape *ThreeDShape) GetFaces() []FaceData {
 	faces := make([]FaceData, len(shape.Faces))
 	for i, face := range shape.Faces {
-		p1 := shape.Vertices[face[0]]
-		p2 := shape.Vertices[face[1]]
-		p3 := shape.Vertices[face[2]]
+		p1 := face.face[0]
+		p2 := face.face[1]
+		p3 := face.face[2]
 
 		p1.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.X, shape.Rotation.Y, shape.Rotation.Z)
 		p2.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.X, shape.Rotation.Y, shape.Rotation.Z)
@@ -110,7 +108,7 @@ func (shape *ThreeDShape) GetFaces() []FaceData {
 		p2.Add(shape.Position)
 		p3.Add(shape.Position)
 
-		faces[i] = FaceData{face: [3]Point3D{p1, p2, p3}, color: shape.color, distance: 0}
+		faces[i] = FaceData{face: [3]Point3D{p1, p2, p3}, color: face.color, distance: 0}
 	}
 	return faces
 }
