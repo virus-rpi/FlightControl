@@ -138,6 +138,7 @@ type Camera struct {
 	Pitch       float64
 	Yaw         float64
 	Roll        float64
+	OrbitCenter Point3D
 }
 
 func NewCamera(position Point3D, rotation Point3D, focalLength, scale float64) Camera {
@@ -206,4 +207,8 @@ func (camera *Camera) MoveForward(distance float64) {
 	camera.Position.X += direction.X * distance
 	camera.Position.Y += direction.Y * distance
 	camera.Position.Z += direction.Z * distance
+}
+
+func (camera *Camera) SetOrbitCenter(center Point3D) {
+	camera.OrbitCenter = center
 }

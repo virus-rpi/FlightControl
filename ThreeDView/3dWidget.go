@@ -148,14 +148,14 @@ func (w *ThreeDWidget) render() image.Image {
 
 func (w *ThreeDWidget) Dragged(event *fyne.DragEvent) {
 	w.camera.Position.Rotate(Point3D{X: 0, Y: 0, Z: 100}, float64(event.Dragged.DY)/10, 0, float64(event.Dragged.DX)/10)
-	w.camera.PointAt(Point3D{X: 0, Y: 0, Z: 100})
+	w.camera.PointAt(w.camera.OrbitCenter)
 }
 
 func (w *ThreeDWidget) DragEnd() {}
 
 func (w *ThreeDWidget) Scrolled(event *fyne.ScrollEvent) {
 	w.camera.MoveForward(float64(event.Scrolled.DY) / 3)
-	w.camera.PointAt(Point3D{X: 0, Y: 0, Z: 100})
+	w.camera.PointAt(w.camera.OrbitCenter)
 }
 
 type threeDRenderer struct {
