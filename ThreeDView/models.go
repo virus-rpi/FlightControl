@@ -283,7 +283,7 @@ func NewOrientationObject(w *ThreeDWidget) *ThreeDShape {
 		Rotation: Rotation3D{},
 		widget:   w,
 	}
-	w.RegisterAnimation(func() {
+	w.RegisterTickMethod(func() {
 		orientationObject.Position = w.camera.UnProject(Point2D{X: 150, Y: 150}, 20)
 	})
 	w.AddObject(&orientationObject)

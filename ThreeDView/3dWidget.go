@@ -18,17 +18,21 @@ var (
 	Height = Pixel(600)
 )
 
+// ThreeDWidget is a widget that displays 3D objects
 type ThreeDWidget struct {
 	widget.BaseWidget
-	image              *canvas.Image
-	camera             *Camera
-	objects            []*ThreeDShape
-	animations         []func()
-	bgColor            color.Color
-	renderFaceOutlines bool
-	renderFaceColors   bool
+	image              *canvas.Image  // The image that is rendered on
+	camera             *Camera        // The camera of the 3D widget
+	objects            []*ThreeDShape // The objects in the 3D widget
+	tickMethods        []func()       // The methods that are called every frame
+	bgColor            color.Color    // The background color of the 3D widget
+	renderFaceOutlines bool           // Whether the faces should be rendered with outlines
+	renderFaceColors   bool           // Whether the faces should be rendered with colors
+	fpsCap             float64        // The maximum frames per second the widget should render at
+	tpsCap             float64        // The maximum ticks per second the widget should tick at
 }
 
+// NewThreeDWidget creates a new 3D widget
 func NewThreeDWidget() *ThreeDWidget {
 	w := &ThreeDWidget{}
 	w.ExtendBaseWidget(w)
@@ -39,43 +43,85 @@ func NewThreeDWidget() *ThreeDWidget {
 	w.camera = &standardCamera
 	w.objects = []*ThreeDShape{}
 	w.image = canvas.NewImageFromImage(w.render())
-	go w.animate()
+	w.fpsCap = math.Inf(1)
+	w.tpsCap = math.Inf(1)
+	go w.renderLoop()
+	go w.tickLoop()
 	return w
 }
 
-func (w *ThreeDWidget) animate() {
-	ticker := time.NewTicker(time.Millisecond * 50)
-	defer ticker.Stop()
+func (w *ThreeDWidget) tickLoop() {
+	for {
+		startTime := time.Now()
+		tickDuration := time.Second / time.Duration(w.tpsCap)
 
-	for range ticker.C {
-		for _, animation := range w.animations {
-			animation()
+		for _, tickMethod := range w.tickMethods {
+			go tickMethod()
 		}
-		w.image.Image = w.render()
-		canvas.Refresh(w.image)
+
+		elapsedTime := time.Since(startTime)
+		if elapsedTime < tickDuration {
+			time.Sleep(tickDuration - elapsedTime)
+		}
 	}
 }
 
-func (w *ThreeDWidget) RegisterAnimation(animation func()) {
-	w.animations = append(w.animations, animation)
+func (w *ThreeDWidget) renderLoop() {
+	for {
+		startTime := time.Now()
+		frameDuration := time.Second / time.Duration(w.fpsCap)
+
+		w.image.Image = w.render()
+		canvas.Refresh(w.image)
+
+		elapsedTime := time.Since(startTime)
+		if elapsedTime < frameDuration {
+			time.Sleep(frameDuration - elapsedTime)
+		}
+	}
 }
 
+// RegisterTickMethod registers an animation function to be called every frame
+func (w *ThreeDWidget) RegisterTickMethod(tick func()) {
+	w.tickMethods = append(w.tickMethods, tick)
+}
+
+// AddObject adds a 3D object as ThreeDShape to the widget. This should be called in the method that creates the object
 func (w *ThreeDWidget) AddObject(object *ThreeDShape) {
 	w.objects = append(w.objects, object)
 }
 
+// SetCamera sets the camera of the 3D widget
 func (w *ThreeDWidget) SetCamera(camera *Camera) {
 	w.camera = camera
 }
 
+// SetBackgroundColor sets the background color of the 3D widget
 func (w *ThreeDWidget) SetBackgroundColor(color color.Color) {
 	w.bgColor = color
 }
 
+// SetFPSCap sets the maximum frames per second the widget should render at
+func (w *ThreeDWidget) SetFPSCap(fps float64) {
+	w.fpsCap = fps
+}
+
+// SetTPSCap sets the maximum ticks per second the widget should update at. Animations are triggered at this rate
+func (w *ThreeDWidget) SetTPSCap(tps float64) {
+	w.tpsCap = tps
+}
+
+// SetRenderFaceOutlines sets whether the faces should be rendered with outlines.
+// If false, only colors will be rendered. If colors are also false, nothing will be rendered.
+// If true, the faces will be rendered with black outlines or the color of the face if face colors are disabled.
+// Default is false
 func (w *ThreeDWidget) SetRenderFaceOutlines(newVal bool) {
 	w.renderFaceOutlines = newVal
 }
 
+// SetRenderFaceColors sets whether the faces should be rendered with colors.
+// If false, only outlines will be rendered. If outline is also false, nothing will be rendered.
+// Default is true
 func (w *ThreeDWidget) SetRenderFaceColors(newVal bool) {
 	w.renderFaceColors = newVal
 }
@@ -104,13 +150,9 @@ func (w *ThreeDWidget) render() image.Image {
 		go func(object *ThreeDShape) {
 			defer wg3d.Done()
 			objectFaces := object.GetFaces()
-			for _, face := range objectFaces {
-				mu3d.Lock()
-				if w.camera.IsPointInFrustum(face.face[0]) || w.camera.IsPointInFrustum(face.face[1]) || w.camera.IsPointInFrustum(face.face[2]) {
-					faces = append(faces, face)
-				}
-				mu3d.Unlock()
-			}
+			mu3d.Lock()
+			faces = append(faces, objectFaces...)
+			mu3d.Unlock()
 		}(object)
 	}
 	wg3d.Wait()
@@ -170,20 +212,24 @@ type threeDRenderer struct {
 	image *canvas.Image
 }
 
+// Layout resizes the widget to the given size
 func (r *threeDRenderer) Layout(size fyne.Size) {
 	r.image.Resize(size)
 	Width = Pixel(size.Width)
 	Height = Pixel(size.Height)
 }
 
+// MinSize returns the minimum size of the widget
 func (r *threeDRenderer) MinSize() fyne.Size {
 	return r.image.MinSize()
 }
 
+// Refresh refreshes the widget
 func (r *threeDRenderer) Refresh() {
 	canvas.Refresh(r.image)
 }
 
+// Objects returns the objects of the widget. This will be only the image that is rendered on
 func (r *threeDRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{r.image}
 }
@@ -294,16 +340,4 @@ func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Col
 		x2 := interpolateX(y, p1.Y, p3.Y, p1.X, p3.X)
 		drawHorizontalLine(y, x1, x2, fillColor)
 	}
-}
-
-func (w *ThreeDWidget) faceDistance(face [3]Point3D) Unit {
-	cameraPos := w.camera.Position
-
-	normalPos := Point3D{
-		X: (face[0].X + face[1].X + face[2].X) / 3,
-		Y: (face[0].Y + face[1].Y + face[2].Y) / 3,
-		Z: (face[0].Z + face[1].Z + face[2].Z) / 3,
-	}
-
-	return Unit(math.Sqrt(math.Pow(float64(normalPos.X-cameraPos.X), 2) + math.Pow(float64(normalPos.Y-cameraPos.Y), 2) + math.Pow(float64(normalPos.Z-cameraPos.Z), 2)))
 }

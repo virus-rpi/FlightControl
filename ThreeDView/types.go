@@ -3,6 +3,7 @@ package ThreeDView
 import (
 	"image/color"
 	"math"
+	"sync"
 )
 
 // Degrees represents an angle in degrees
@@ -96,8 +97,8 @@ func (point *Point3D) Subtract(other Point3D) {
 	point.Z -= other.Z
 }
 
-// Distance returns the distance between the point and another point
-func (point *Point3D) Distance(other Point3D) Unit {
+// DistanceTo returns the distance between the point and another point
+func (point *Point3D) DistanceTo(other Point3D) Unit {
 	dx := point.X - other.X
 	dy := point.Y - other.Y
 	dz := point.Z - other.Z
@@ -124,9 +125,31 @@ func (point *Point2D) InBounds() bool {
 	return point.X >= 0 && point.X < Width && point.Y >= 0 && point.Y < Height
 }
 
+// Face represents a face in 3D space as 3 3D points
+type Face [3]Point3D
+
+// Rotate rotates the face around a pivot point by the given rotation
+func (face *Face) Rotate(pivot Point3D, rotation Rotation3D) {
+	face[0].Rotate(pivot, rotation)
+	face[1].Rotate(pivot, rotation)
+	face[2].Rotate(pivot, rotation)
+}
+
+// Add adds another point to the face
+func (face *Face) Add(other Point3D) {
+	face[0].Add(other)
+	face[1].Add(other)
+	face[2].Add(other)
+}
+
+// DistanceTo returns the distance between the face and a point
+func (face *Face) DistanceTo(point Point3D) Unit {
+	return (face[0].DistanceTo(point) + face[1].DistanceTo(point) + face[2].DistanceTo(point)) / 3
+}
+
 // FaceData represents a face in 3D space
 type FaceData struct {
-	face     [3]Point3D  // The face in 3D space as 3 3d points
+	face     Face        // The face in 3D space as a Face
 	color    color.Color // The color of the face
 	distance Unit        // The distance of the face from the camera 3d world space
 }
@@ -149,25 +172,18 @@ type ThreeDShape struct {
 // GetFaces returns the faces of the shape in world space as FaceData
 func (shape *ThreeDShape) GetFaces() []FaceData {
 	faces := make([]FaceData, len(shape.faces))
+	var wg sync.WaitGroup
+	wg.Add(len(shape.faces))
 	for i, face := range shape.faces {
-		p1 := face.face[0]
-		p2 := face.face[1]
-		p3 := face.face[2]
-
-		p1.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation)
-		p2.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation)
-		p3.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation)
-
-		p1.Add(shape.Position)
-		p2.Add(shape.Position)
-		p3.Add(shape.Position)
-
-		faces[i] = FaceData{
-			face:     [3]Point3D{p1, p2, p3},
-			color:    face.color,
-			distance: shape.widget.faceDistance([3]Point3D{p1, p2, p3}),
-		}
+		go func(i int, face FaceData) {
+			defer wg.Done()
+			face.face.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation)
+			face.face.Add(shape.Position)
+			face.distance = face.face.DistanceTo(shape.widget.camera.Position)
+			faces[i] = face
+		}(i, face)
 	}
+	wg.Wait()
 	return faces
 }
 
@@ -228,11 +244,6 @@ func (camera *Camera) UnProject(point2d Point2D, distance Unit) Point3D {
 	pointInWorldSpace.Add(camera.Position)
 
 	return pointInWorldSpace
-}
-
-// IsPointInFrustum TODO: Implement this function
-func (camera *Camera) IsPointInFrustum(point Point3D) bool {
-	return true
 }
 
 // CameraController is an interface for camera controllers to implement

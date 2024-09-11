@@ -10,7 +10,9 @@ import (
 func simulationTab() fyne.CanvasObject {
 	threeDEnv := ThreeDView.NewThreeDWidget()
 	threeDEnv.SetBackgroundColor(color.RGBA{R: 135, G: 206, B: 235, A: 255})
-	ThreeDView.NewPlane(1000, ThreeDView.Point3D{X: 0, Y: 0, Z: 0}, ThreeDView.Rotation3D{X: 0, Y: 0, Z: 0}, color.RGBA{G: 255, A: 255}, threeDEnv, 10)
+	threeDEnv.SetFPSCap(60)
+
+	ThreeDView.NewPlane(1000, ThreeDView.Point3D{X: 0, Y: 0, Z: 0}, ThreeDView.Rotation3D{X: 0, Y: 0, Z: 0}, color.RGBA{G: 255, A: 255}, threeDEnv, 5)
 	ThreeDView.NewRocket(300, ThreeDView.Point3D{X: 0, Y: 0, Z: 320}, ThreeDView.Rotation3D{X: 0, Y: 0, Z: 0}, color.RGBA{R: 255, G: 100, B: 10, A: 255}, threeDEnv, 2, 15)
 	ThreeDView.NewOrientationObject(threeDEnv)
 
