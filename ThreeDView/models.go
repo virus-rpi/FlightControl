@@ -37,7 +37,7 @@ func NewCube(size float64, position Point3D, rotation Point3D, color color.Color
 	}
 
 	return ThreeDShape{
-		Faces:    facesData,
+		faces:    facesData,
 		Position: position,
 		Rotation: rotation,
 		widget:   w,
@@ -82,7 +82,7 @@ func NewPlane(size float64, position Point3D, rotation Point3D, color color.Colo
 	}
 
 	return ThreeDShape{
-		Faces:    facesData,
+		faces:    facesData,
 		Position: position,
 		Rotation: rotation,
 		widget:   w,
@@ -123,7 +123,7 @@ func NewRocket(size float64, position Point3D, rotation Point3D, baseColor color
 
 	return Rocket{
 		ThreeDShape: ThreeDShape{
-			Faces:    faces,
+			faces:    faces,
 			Position: position,
 			Rotation: rotation,
 			widget:   w,
@@ -137,7 +137,7 @@ func NewRocket(size float64, position Point3D, rotation Point3D, baseColor color
 func (rocket *Rocket) RemoveStage() {
 	if rocket.Stages > 1 {
 		rocket.Stages--
-		rocket.Faces = buildRocketFaces(rocket.Size, rocket.Radius, rocket.Faces[0].color, rocket.Stages)
+		rocket.faces = buildRocketFaces(rocket.Size, rocket.Radius, rocket.faces[0].color, rocket.Stages)
 	}
 }
 

@@ -87,15 +87,15 @@ type ProjectedFaceData struct {
 }
 
 type ThreeDShape struct {
-	Faces    []FaceData
+	faces    []FaceData
 	Rotation Point3D
 	Position Point3D
 	widget   *ThreeDWidget
 }
 
 func (shape *ThreeDShape) GetFaces() []FaceData {
-	faces := make([]FaceData, len(shape.Faces))
-	for i, face := range shape.Faces {
+	faces := make([]FaceData, len(shape.faces))
+	for i, face := range shape.faces {
 		p1 := face.face[0]
 		p2 := face.face[1]
 		p3 := face.face[2]
@@ -134,15 +134,20 @@ func (shape *ThreeDShape) Move(x, y, z float64) {
 type Camera struct {
 	Position    Point3D
 	FocalLength float64
+	Fov         float64
 	Pitch       float64
 	Yaw         float64
 	Roll        float64
-	OrbitCenter Point3D
-	Fov         float64
+	controller  CameraController
 }
 
 func NewCamera(position Point3D, rotation Point3D, focalLength float64) Camera {
 	return Camera{Position: position, FocalLength: focalLength, Pitch: rotation.X, Yaw: rotation.Y, Roll: rotation.Z, Fov: 90}
+}
+
+func (camera *Camera) SetController(controller CameraController) {
+	camera.controller = controller
+	controller.setCamera(camera)
 }
 
 func (camera *Camera) Project(point Point3D) Point2D {
@@ -170,55 +175,28 @@ func (camera *Camera) Project(point Point3D) Point2D {
 	return Point2D{int64(x2D), int64(y2D)}
 }
 
-func (camera *Camera) PointAt(target Point3D) {
-	direction := Point3D{
-		X: target.X - camera.Position.X,
-		Y: target.Y - camera.Position.Y,
-		Z: target.Z - camera.Position.Z,
-	}
-
-	length := math.Sqrt(direction.X*direction.X + direction.Y*direction.Y + direction.Z*direction.Z)
-	direction.X /= length
-	direction.Y /= length
-	direction.Z /= length
-
-	camera.Pitch = math.Asin(-direction.Y) * (180 / math.Pi)
-	camera.Yaw = math.Atan2(direction.X, direction.Z) * (-180 / math.Pi)
-
-	up := Point3D{X: 0, Y: 0, Z: 1}
-	right := Point3D{
-		X: direction.Y*up.Z - direction.Z*up.Y,
-		Y: direction.Z*up.X - direction.X*up.Z,
-		Z: direction.X*up.Y - direction.Y*up.X,
-	}
-	rightLength := math.Sqrt(right.X*right.X + right.Y*right.Y + right.Z*right.Z)
-	right.X /= rightLength
-	right.Y /= rightLength
-	right.Z /= rightLength
-	correctedUp := Point3D{
-		X: right.Y*direction.Z - right.Z*direction.Y,
-		Y: right.Z*direction.X - right.X*direction.Z,
-		Z: right.X*direction.Y - right.Y*direction.X,
-	}
-	camera.Roll = math.Atan2(correctedUp.X, correctedUp.Y)*(-180/math.Pi) + 180
-}
-
-func (camera *Camera) MoveForward(distance float64) {
-	direction := Point3D{
-		X: math.Cos(degreesToRadians(camera.Pitch)) * math.Sin(degreesToRadians(camera.Yaw)),
-		Y: math.Sin(degreesToRadians(camera.Pitch)),
-		Z: math.Cos(degreesToRadians(camera.Pitch)) * math.Cos(degreesToRadians(camera.Yaw)),
-	}
-
-	camera.Position.X += direction.X * distance
-	camera.Position.Y += direction.Y * distance
-	camera.Position.Z += direction.Z * distance
-}
-
-func (camera *Camera) SetOrbitCenter(center Point3D) {
-	camera.OrbitCenter = center
-}
-
+// IsPointInFrustum TODO: Implement this function
 func (camera *Camera) IsPointInFrustum(point Point3D) bool {
 	return true
+}
+
+type CameraController interface {
+	setCamera(*Camera)
+}
+
+type BaseController struct {
+	camera *Camera
+}
+
+func (controller *BaseController) setCamera(camera *Camera) {
+	controller.camera = camera
+}
+
+type DragController interface {
+	onDrag(float32, float32)
+	onDragEnd()
+}
+
+type ScrollController interface {
+	onScroll(float32, float32)
 }
