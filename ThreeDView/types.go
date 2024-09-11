@@ -238,12 +238,48 @@ func (camera *Camera) UnProject(point2d Point2D, distance Unit) Point3D {
 		Z: -distance,
 	}
 
-	pointInCameraSpace.Rotate(Point3D{}, camera.Rotation.Minus())
+	rotationMatrix := createRotationMatrix(camera.Rotation)
 
-	pointInWorldSpace := pointInCameraSpace
+	pointInWorldSpace := applyInverseRotationMatrix(pointInCameraSpace, rotationMatrix)
 	pointInWorldSpace.Add(camera.Position)
 
 	return pointInWorldSpace
+}
+
+func createRotationMatrix(rotation Rotation3D) [3][3]float64 {
+	rx := float64(rotation.X.ToRadians())
+	ry := float64(rotation.Y.ToRadians())
+	rz := float64(rotation.Z.ToRadians())
+
+	cosX, sinX := math.Cos(rx), math.Sin(rx)
+	cosY, sinY := math.Cos(ry), math.Sin(ry)
+	cosZ, sinZ := math.Cos(rz), math.Sin(rz)
+
+	return [3][3]float64{
+		{
+			cosY * cosZ,
+			cosY * sinZ,
+			-sinY,
+		},
+		{
+			sinX*sinY*cosZ - cosX*sinZ,
+			sinX*sinY*sinZ + cosX*cosZ,
+			sinX * cosY,
+		},
+		{
+			cosX*sinY*cosZ + sinX*sinZ,
+			cosX*sinY*sinZ - sinX*cosZ,
+			cosX * cosY,
+		},
+	}
+}
+
+func applyInverseRotationMatrix(point Point3D, rotationMatrix [3][3]float64) Point3D {
+	return Point3D{
+		X: Unit(rotationMatrix[0][0]*float64(point.X) + rotationMatrix[0][1]*float64(point.Y) + rotationMatrix[0][2]*float64(point.Z)),
+		Y: Unit(rotationMatrix[1][0]*float64(point.X) + rotationMatrix[1][1]*float64(point.Y) + rotationMatrix[1][2]*float64(point.Z)),
+		Z: Unit(rotationMatrix[2][0]*float64(point.X) + rotationMatrix[2][1]*float64(point.Y) + rotationMatrix[2][2]*float64(point.Z)),
+	}
 }
 
 // CameraController is an interface for camera controllers to implement
