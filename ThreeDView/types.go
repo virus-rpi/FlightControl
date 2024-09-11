@@ -61,6 +61,21 @@ func (rotation *Rotation3D) CreateRotationMatrix() RotationMatrix {
 	}
 }
 
+func (rotation *Rotation3D) Add(other Rotation3D) {
+	rotation.X += other.X
+	rotation.Y += other.Y
+	rotation.Z += other.Z
+}
+
+func (rotation *Rotation3D) ToDirectionVector() Point3D {
+	rotationMatrix := rotation.CreateRotationMatrix()
+	return Point3D{
+		X: Unit(rotationMatrix[0][2]),
+		Y: Unit(rotationMatrix[1][2]),
+		Z: Unit(rotationMatrix[2][2]),
+	}
+}
+
 // RotationMatrix represents a 3x3 rotation matrix
 type RotationMatrix [3][3]float64
 
@@ -70,6 +85,15 @@ func (rotationMatrix *RotationMatrix) ApplyInverseRotationMatrix(point Point3D) 
 		X: Unit(rotationMatrix[0][0]*float64(point.X) + rotationMatrix[0][1]*float64(point.Y) + rotationMatrix[0][2]*float64(point.Z)),
 		Y: Unit(rotationMatrix[1][0]*float64(point.X) + rotationMatrix[1][1]*float64(point.Y) + rotationMatrix[1][2]*float64(point.Z)),
 		Z: Unit(rotationMatrix[2][0]*float64(point.X) + rotationMatrix[2][1]*float64(point.Y) + rotationMatrix[2][2]*float64(point.Z)),
+	}
+}
+
+// Transpose transposes the rotation matrix
+func (rotationMatrix *RotationMatrix) Transpose() RotationMatrix {
+	return RotationMatrix{
+		{rotationMatrix[0][0], rotationMatrix[1][0], rotationMatrix[2][0]},
+		{rotationMatrix[0][1], rotationMatrix[1][1], rotationMatrix[2][1]},
+		{rotationMatrix[0][2], rotationMatrix[1][2], rotationMatrix[2][2]},
 	}
 }
 
@@ -154,6 +178,14 @@ func (point *Point3D) Magnitude() Unit {
 // Dot returns the dot product of the point with another point
 func (point *Point3D) Dot(other Point3D) Unit {
 	return point.X*other.X + point.Y*other.Y + point.Z*other.Z
+}
+
+// Normalize normalizes the point
+func (point *Point3D) Normalize() {
+	magnitude := point.Magnitude()
+	point.X /= magnitude
+	point.Y /= magnitude
+	point.Z /= magnitude
 }
 
 // Point2D represents a point in 2D space

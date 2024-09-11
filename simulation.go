@@ -3,7 +3,6 @@ package main
 import (
 	"FlightControl/ThreeDView"
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
 	"image/color"
 )
 
@@ -17,15 +16,10 @@ func simulationTab() fyne.CanvasObject {
 	ThreeDView.NewOrientationObject(threeDEnv)
 
 	camera := ThreeDView.NewCamera(ThreeDView.Point3D{Y: 500, Z: 200}, ThreeDView.Rotation3D{})
-	manualController := ThreeDView.NewManualController()
-	camera.SetController(manualController)
-	rotationSlider := manualController.GetRotationSlider()
-	positionButtons := manualController.GetPositionControl()
-	infoLabel := manualController.GetInfoLabel()
-	//orbitController := ThreeDView.NewOrbitController(ThreeDView.Point3D{X: 0, Y: 0, Z: 100})
-	//camera.SetController(orbitController)
-	//orbitController.PointAtTarget()
+	orbitController := ThreeDView.NewOrbitController(ThreeDView.Point3D{X: 0, Y: 0, Z: 100})
+	camera.SetController(orbitController)
+	// orbitController.PointAtTarget()
 	threeDEnv.SetCamera(&camera)
 
-	return container.NewBorder(nil, nil, nil, nil, threeDEnv, container.NewVBox(rotationSlider, positionButtons, infoLabel))
+	return threeDEnv
 }
