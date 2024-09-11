@@ -134,15 +134,15 @@ func (shape *ThreeDShape) Move(x, y, z float64) {
 type Camera struct {
 	Position    Point3D
 	FocalLength float64
-	Scale       float64
 	Pitch       float64
 	Yaw         float64
 	Roll        float64
 	OrbitCenter Point3D
+	Fov         float64
 }
 
-func NewCamera(position Point3D, rotation Point3D, focalLength, scale float64) Camera {
-	return Camera{Position: position, FocalLength: focalLength, Scale: scale, Pitch: rotation.X, Yaw: rotation.Y, Roll: rotation.Z}
+func NewCamera(position Point3D, rotation Point3D, focalLength float64) Camera {
+	return Camera{Position: position, FocalLength: focalLength, Pitch: rotation.X, Yaw: rotation.Y, Roll: rotation.Z, Fov: 90}
 }
 
 func (camera *Camera) Project(point Point3D) Point2D {
@@ -158,8 +158,14 @@ func (camera *Camera) Project(point Point3D) Point2D {
 		translatedZ = 0.000001
 	}
 
-	x2D := (translatedX*camera.FocalLength/translatedZ)*camera.Scale + float64(Width)/2
-	y2D := (translatedY*camera.FocalLength/translatedZ)*camera.Scale + float64(Height)/2
+	fovRadians := degreesToRadians(camera.Fov)
+	scale := camera.FocalLength / math.Tan(fovRadians/2)
+
+	x2D := (translatedX * scale / translatedZ) + float64(Width)/2
+	y2D := (translatedY * scale / translatedZ) + float64(Height)/2
+
+	x2D = math.Max(math.Min(x2D, float64(math.MaxInt64)), float64(math.MinInt64))
+	y2D = math.Max(math.Min(y2D, float64(math.MaxInt64)), float64(math.MinInt64))
 
 	return Point2D{int64(x2D), int64(y2D)}
 }
@@ -211,4 +217,8 @@ func (camera *Camera) MoveForward(distance float64) {
 
 func (camera *Camera) SetOrbitCenter(center Point3D) {
 	camera.OrbitCenter = center
+}
+
+func (camera *Camera) IsPointInFrustum(point Point3D) bool {
+	return true
 }

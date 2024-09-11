@@ -35,7 +35,7 @@ func NewThreeDWidget() *ThreeDWidget {
 	w.bgColor = color.Transparent
 	w.renderFaceOutlines = false
 	w.renderFaceColors = true
-	standardCamera := NewCamera(Point3D{}, Point3D{}, 0, 0)
+	standardCamera := NewCamera(Point3D{}, Point3D{}, 0)
 	w.camera = &standardCamera
 	w.objects = []*ThreeDShape{}
 	w.image = canvas.NewImageFromImage(w.render())
@@ -106,7 +106,9 @@ func (w *ThreeDWidget) render() image.Image {
 			objectFaces := object.GetFaces()
 			for _, face := range objectFaces {
 				mu3d.Lock()
-				faces = append(faces, FaceData{face: face.face, color: face.color, distance: w.faceDistance(face.face)})
+				if w.camera.IsPointInFrustum(face.face[0]) || w.camera.IsPointInFrustum(face.face[1]) || w.camera.IsPointInFrustum(face.face[2]) {
+					faces = append(faces, FaceData{face: face.face, color: face.color, distance: w.faceDistance(face.face)})
+				}
 				mu3d.Unlock()
 			}
 		}(object)
