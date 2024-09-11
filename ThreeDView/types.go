@@ -5,30 +5,44 @@ import (
 	"math"
 )
 
+// Degrees represents an angle in degrees
 type Degrees float64
 
+// ToRadians converts degrees to radians
 func (degrees Degrees) ToRadians() Radians {
 	return Radians(degrees * math.Pi / 180)
 }
 
+// Radians represents an angle in radians
 type Radians float64
 
+// ToDegrees converts radians to degrees
 func (radians Radians) ToDegrees() Degrees {
 	return Degrees(radians * 180 / math.Pi)
 }
 
+// Rotation3D represents a rotation in 3D space
 type Rotation3D struct {
 	X, Y, Z Degrees
 }
 
+// Minus negates the rotation in all axes and returns the negated rotation
+func (rotation *Rotation3D) Minus() Rotation3D {
+	return Rotation3D{-rotation.X, -rotation.Y, -rotation.Z}
+}
+
+// Unit is the unit for distance in 3D space
 type Unit float64
 
+// Pixel is the unit for distance in 2D space
 type Pixel int64
 
+// Point3D represents a point in 3D space
 type Point3D struct {
 	X, Y, Z Unit
 }
 
+// RotateX rotates the point around a pivot point by the given rotation in the X axis
 func (point *Point3D) RotateX(pivot Point3D, degrees Degrees) {
 	radians := degrees.ToRadians()
 	translatedY := point.Y - pivot.Y
@@ -39,6 +53,7 @@ func (point *Point3D) RotateX(pivot Point3D, degrees Degrees) {
 	point.Z = newZ + pivot.Z
 }
 
+// RotateY rotates the point around a pivot point by the given rotation in the Y axis
 func (point *Point3D) RotateY(pivot Point3D, degrees Degrees) {
 	radians := degrees.ToRadians()
 	translatedX := point.X - pivot.X
@@ -49,6 +64,7 @@ func (point *Point3D) RotateY(pivot Point3D, degrees Degrees) {
 	point.Z = newZ + pivot.Z
 }
 
+// RotateZ rotates the point around a pivot point by the given rotation in the Z axis
 func (point *Point3D) RotateZ(pivot Point3D, degrees Degrees) {
 	radians := degrees.ToRadians()
 	translatedX := point.X - pivot.X
@@ -59,24 +75,28 @@ func (point *Point3D) RotateZ(pivot Point3D, degrees Degrees) {
 	point.Y = newY + pivot.Y
 }
 
-func (point *Point3D) Rotate(pivot Point3D, x, y, z Degrees) {
-	point.RotateX(pivot, x)
-	point.RotateY(pivot, y)
-	point.RotateZ(pivot, z)
+// Rotate rotates the point around a pivot point by the given rotation
+func (point *Point3D) Rotate(pivot Point3D, rotation Rotation3D) {
+	point.RotateX(pivot, rotation.X)
+	point.RotateY(pivot, rotation.Y)
+	point.RotateZ(pivot, rotation.Z)
 }
 
+// Add adds another point to the point
 func (point *Point3D) Add(other Point3D) {
 	point.X += other.X
 	point.Y += other.Y
 	point.Z += other.Z
 }
 
+// Subtract subtracts another point from the point
 func (point *Point3D) Subtract(other Point3D) {
 	point.X -= other.X
 	point.Y -= other.Y
 	point.Z -= other.Z
 }
 
+// Distance returns the distance between the point and another point
 func (point *Point3D) Distance(other Point3D) Unit {
 	dx := point.X - other.X
 	dy := point.Y - other.Y
@@ -84,41 +104,49 @@ func (point *Point3D) Distance(other Point3D) Unit {
 	return Unit(math.Sqrt(float64(dx*dx + dy*dy + dz*dz)))
 }
 
+// Magnitude returns the magnitude of the point (distance from origin)
 func (point *Point3D) Magnitude() Unit {
 	return Unit(math.Sqrt(float64(point.X*point.X + point.Y*point.Y + point.Z*point.Z)))
 }
 
+// Dot returns the dot product of the point with another point
 func (point *Point3D) Dot(other Point3D) Unit {
 	return point.X*other.X + point.Y*other.Y + point.Z*other.Z
 }
 
+// Point2D represents a point in 2D space
 type Point2D struct {
 	X, Y Pixel
 }
 
+// InBounds returns true if the point is in bounds of the screen
 func (point *Point2D) InBounds() bool {
 	return point.X >= 0 && point.X < Width && point.Y >= 0 && point.Y < Height
 }
 
+// FaceData represents a face in 3D space
 type FaceData struct {
-	face     [3]Point3D
-	color    color.Color
-	distance Unit
+	face     [3]Point3D  // The face in 3D space as 3 3d points
+	color    color.Color // The color of the face
+	distance Unit        // The distance of the face from the camera 3d world space
 }
 
+// ProjectedFaceData represents a face projected to 2D space
 type ProjectedFaceData struct {
-	face     [3]Point2D
-	color    color.Color
-	distance Unit
+	face     [3]Point2D  // The face in 2D space as 3 2d points
+	color    color.Color // The color of the face
+	distance Unit        // The distance of the un-projected face from the camera in 3d world space
 }
 
+// ThreeDShape represents a 3D shape in world space
 type ThreeDShape struct {
-	faces    []FaceData
-	Rotation Rotation3D
-	Position Point3D
-	widget   *ThreeDWidget
+	faces    []FaceData    // Faces of the shape in local space
+	Rotation Rotation3D    // Rotation of the shape in world space
+	Position Point3D       // Position of the shape in world space
+	widget   *ThreeDWidget // The widget the shape is in
 }
 
+// GetFaces returns the faces of the shape in world space as FaceData
 func (shape *ThreeDShape) GetFaces() []FaceData {
 	faces := make([]FaceData, len(shape.faces))
 	for i, face := range shape.faces {
@@ -126,63 +154,48 @@ func (shape *ThreeDShape) GetFaces() []FaceData {
 		p2 := face.face[1]
 		p3 := face.face[2]
 
-		p1.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.X, shape.Rotation.Y, shape.Rotation.Z)
-		p2.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.X, shape.Rotation.Y, shape.Rotation.Z)
-		p3.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation.X, shape.Rotation.Y, shape.Rotation.Z)
+		p1.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation)
+		p2.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation)
+		p3.Rotate(Point3D{X: 0, Y: 0, Z: 0}, shape.Rotation)
 
 		p1.Add(shape.Position)
 		p2.Add(shape.Position)
 		p3.Add(shape.Position)
 
-		faces[i] = FaceData{face: [3]Point3D{p1, p2, p3}, color: face.color, distance: 0}
+		faces[i] = FaceData{
+			face:     [3]Point3D{p1, p2, p3},
+			color:    face.color,
+			distance: shape.widget.faceDistance([3]Point3D{p1, p2, p3}),
+		}
 	}
 	return faces
 }
 
-func (shape *ThreeDShape) RotateX(degrees Degrees) {
-	shape.Rotation.X += degrees
-}
-
-func (shape *ThreeDShape) RotateY(degrees Degrees) {
-	shape.Rotation.Y += degrees
-}
-
-func (shape *ThreeDShape) RotateZ(degrees Degrees) {
-	shape.Rotation.Z += degrees
-}
-
-func (shape *ThreeDShape) Move(x, y, z Unit) {
-	shape.Position.X += x
-	shape.Position.Y += y
-	shape.Position.Z += z
-}
-
+// Camera represents a camera in 3D space
 type Camera struct {
-	Position   Point3D
-	Fov        Degrees
-	Pitch      Degrees
-	Yaw        Degrees
-	Roll       Degrees
-	controller CameraController
+	Position   Point3D          // Camera position in world space in units
+	Fov        Degrees          // Field of view in degrees
+	Rotation   Rotation3D       // Camera rotation in camera space
+	controller CameraController // Camera controller
 }
 
+// NewCamera creates a new camera at the given position in world space and rotation in camera space
 func NewCamera(position Point3D, rotation Rotation3D) Camera {
-	return Camera{Position: position, Pitch: rotation.X, Yaw: rotation.Y, Roll: rotation.Z, Fov: 90}
+	return Camera{Position: position, Rotation: rotation, Fov: 90}
 }
 
+// SetController sets the controller for the camera. It has to implement the CameraController interface
 func (camera *Camera) SetController(controller CameraController) {
 	camera.controller = controller
 	controller.setCamera(camera)
 }
 
+// Project projects a 3D point to a 2D point on the screen
 func (camera *Camera) Project(point Point3D) Point2D {
-	translatedPoint := Point3D{
-		X: point.X - camera.Position.X,
-		Y: point.Y - camera.Position.Y,
-		Z: point.Z - camera.Position.Z,
-	}
+	translatedPoint := point
+	translatedPoint.Subtract(camera.Position)
 
-	translatedPoint.Rotate(camera.Position, -camera.Yaw, -camera.Pitch, -camera.Roll)
+	translatedPoint.Rotate(Point3D{}, camera.Rotation)
 
 	epsilon := 1e-6
 	if math.Abs(float64(translatedPoint.Z)) < epsilon {
@@ -198,20 +211,18 @@ func (camera *Camera) Project(point Point3D) Point2D {
 	return Point2D{Pixel(x2D), Pixel(y2D)}
 }
 
+// UnProject un-projects a 2D point on the screen to a 3D point in world space
 func (camera *Camera) UnProject(point2d Point2D, distance Unit) Point3D {
-	x := Unit((float64(point2d.X) - float64(Width)/2) / (float64(Width) / 2))
-	y := Unit((float64(point2d.Y) - float64(Height)/2) / (float64(Height) / 2))
-
 	fovRadians := camera.Fov.ToRadians()
 	scale := Unit(math.Tan(float64(fovRadians)/2) * float64(distance))
 
-	worldX := x * scale
-	worldY := y * scale
-	worldZ := -distance
+	pointInCameraSpace := Point3D{
+		X: Unit((float64(point2d.X)-float64(Width)/2)/(float64(Width)/2)) * scale,
+		Y: Unit((float64(point2d.Y)-float64(Height)/2)/(float64(Height)/2)) * scale,
+		Z: -distance,
+	}
 
-	pointInCameraSpace := Point3D{X: worldX, Y: worldY, Z: worldZ}
-
-	pointInCameraSpace.Rotate(camera.Position, camera.Yaw, camera.Pitch, camera.Roll)
+	pointInCameraSpace.Rotate(Point3D{}, camera.Rotation.Minus())
 
 	pointInWorldSpace := pointInCameraSpace
 	pointInWorldSpace.Add(camera.Position)
@@ -224,23 +235,28 @@ func (camera *Camera) IsPointInFrustum(point Point3D) bool {
 	return true
 }
 
+// CameraController is an interface for camera controllers to implement
 type CameraController interface {
 	setCamera(*Camera)
 }
 
+// BaseController is a base controller for camera controllers
 type BaseController struct {
 	camera *Camera
 }
 
+// setCamera sets the camera for the controller
 func (controller *BaseController) setCamera(camera *Camera) {
 	controller.camera = camera
 }
 
+// DragController is an interface for CameraController that supports dragging
 type DragController interface {
 	onDrag(float32, float32)
 	onDragEnd()
 }
 
+// ScrollController is an interface for CameraController that supports scrolling
 type ScrollController interface {
 	onScroll(float32, float32)
 }

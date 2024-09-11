@@ -107,7 +107,7 @@ func (w *ThreeDWidget) render() image.Image {
 			for _, face := range objectFaces {
 				mu3d.Lock()
 				if w.camera.IsPointInFrustum(face.face[0]) || w.camera.IsPointInFrustum(face.face[1]) || w.camera.IsPointInFrustum(face.face[2]) {
-					faces = append(faces, FaceData{face: face.face, color: face.color, distance: w.faceDistance(face.face)})
+					faces = append(faces, face)
 				}
 				mu3d.Unlock()
 			}

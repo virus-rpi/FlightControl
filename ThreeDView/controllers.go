@@ -43,12 +43,12 @@ func (controller *OrbitController) PointAtTarget() {
 	direction := controller.target
 	direction.Subtract(controller.camera.Position)
 
-	controller.camera.Yaw = Radians(math.Atan2(float64(direction.X), float64(direction.Z))).ToDegrees()
+	controller.camera.Rotation.X = Radians(math.Atan2(float64(direction.X), float64(direction.Z))).ToDegrees()
 
 	distanceXZ := math.Sqrt(float64(direction.X*direction.X + direction.Z*direction.Z))
 
-	controller.camera.Pitch = Radians(math.Atan2(float64(direction.Y), distanceXZ)).ToDegrees()
-	controller.camera.Roll = 0
+	controller.camera.Rotation.Y = Radians(math.Atan2(float64(direction.Y), distanceXZ)).ToDegrees()
+	controller.camera.Rotation.Z = 0
 }
 
 func (controller *OrbitController) Rotate(yaw, pitch, roll Degrees) {
@@ -133,15 +133,15 @@ func NewManualController() *ManualController {
 func (controller *ManualController) GetRotationSlider() *fyne.Container {
 	sliderYaw := widget.NewSlider(0, 360)
 	sliderYaw.OnChanged = func(value float64) {
-		controller.camera.Yaw = Degrees(value)
+		controller.camera.Rotation.X = Degrees(value)
 	}
 	sliderPitch := widget.NewSlider(0, 360)
 	sliderPitch.OnChanged = func(value float64) {
-		controller.camera.Pitch = Degrees(value)
+		controller.camera.Rotation.Y = Degrees(value)
 	}
 	sliderRoll := widget.NewSlider(0, 360)
 	sliderRoll.OnChanged = func(value float64) {
-		controller.camera.Roll = Degrees(value)
+		controller.camera.Rotation.Z = Degrees(value)
 	}
 	sliderContainer := container.NewVBox(sliderYaw, sliderPitch, sliderRoll)
 	return sliderContainer
@@ -200,7 +200,7 @@ func (controller *ManualController) GetInfoLabel() *widget.Label {
 		for range ticker.C {
 			label.SetText(fmt.Sprintf("X: %.2f Y: %.2f Z: %.2f      Yaw: %.2f Pitch: %.2f Roll: %.2f",
 				controller.camera.Position.X, controller.camera.Position.Y, controller.camera.Position.Z,
-				controller.camera.Yaw, controller.camera.Pitch, controller.camera.Roll))
+				controller.camera.Rotation.X, controller.camera.Rotation.Y, controller.camera.Rotation.Z))
 			label.Refresh()
 		}
 	}()
