@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-func NewCube(size float64, position Point3D, rotation Point3D, color color.Color, w *ThreeDWidget) ThreeDShape {
+func NewCube(size Unit, position Point3D, rotation Rotation3D, color color.Color, w *ThreeDWidget) *ThreeDShape {
 	half := size / 2
 	vertices := []Point3D{
 		{X: -half, Y: -half, Z: -half},
@@ -36,23 +36,25 @@ func NewCube(size float64, position Point3D, rotation Point3D, color color.Color
 		facesData[i] = FaceData{face: [3]Point3D{p1, p2, p3}, color: color}
 	}
 
-	return ThreeDShape{
+	cube := ThreeDShape{
 		faces:    facesData,
 		Position: position,
 		Rotation: rotation,
 		widget:   w,
 	}
+	w.AddObject(&cube)
+	return &cube
 }
 
-func NewPlane(size float64, position Point3D, rotation Point3D, color color.Color, w *ThreeDWidget, resolution int) ThreeDShape {
+func NewPlane(size Unit, position Point3D, rotation Rotation3D, color color.Color, w *ThreeDWidget, resolution int) *ThreeDShape {
 	half := size / 2
-	step := size / float64(resolution)
+	step := size / Unit(resolution)
 	var vertices []Point3D
 	for i := 0; i <= resolution; i++ {
 		for j := 0; j <= resolution; j++ {
 			vertices = append(vertices, Point3D{
-				X: -half + float64(i)*step,
-				Y: -half + float64(j)*step,
+				X: -half + Unit(i)*step,
+				Y: -half + Unit(j)*step,
 				Z: 0,
 			})
 		}
@@ -81,12 +83,14 @@ func NewPlane(size float64, position Point3D, rotation Point3D, color color.Colo
 		facesData[i] = FaceData{face: [3]Point3D{p1, p2, p3}, color: color}
 	}
 
-	return ThreeDShape{
+	plane := ThreeDShape{
 		faces:    facesData,
 		Position: position,
 		Rotation: rotation,
 		widget:   w,
 	}
+	w.AddObject(&plane)
+	return &plane
 }
 
 func adjustColorBrightness(c color.RGBA, factor float64, stage int) color.RGBA {
@@ -114,14 +118,14 @@ func adjustColorBrightness(c color.RGBA, factor float64, stage int) color.RGBA {
 type Rocket struct {
 	ThreeDShape
 	Stages int
-	Radius float64
-	Size   float64
+	Radius Unit
+	Size   Unit
 }
 
-func NewRocket(size float64, position Point3D, rotation Point3D, baseColor color.Color, w *ThreeDWidget, stages int, radius float64) Rocket {
+func NewRocket(size Unit, position Point3D, rotation Rotation3D, baseColor color.Color, w *ThreeDWidget, stages int, radius Unit) *Rocket {
 	faces := buildRocketFaces(size, radius, baseColor, stages)
 
-	return Rocket{
+	rocket := Rocket{
 		ThreeDShape: ThreeDShape{
 			faces:    faces,
 			Position: position,
@@ -132,6 +136,8 @@ func NewRocket(size float64, position Point3D, rotation Point3D, baseColor color
 		Radius: radius,
 		Size:   size,
 	}
+	w.AddObject(&rocket.ThreeDShape)
+	return &rocket
 }
 
 func (rocket *Rocket) RemoveStage() {
@@ -141,16 +147,16 @@ func (rocket *Rocket) RemoveStage() {
 	}
 }
 
-func buildRocketFaces(size float64, radius float64, baseColor color.Color, stages int) []FaceData {
+func buildRocketFaces(size Unit, radius Unit, baseColor color.Color, stages int) []FaceData {
 	var vertices []Point3D
 	var faces []FaceData
 
 	tipHeight := size / 8
 	for i := 0; i < 360; i += 10 {
-		angle := degreesToRadians(float64(i))
+		angle := Degrees(i).ToRadians()
 		vertices = append(vertices, Point3D{
-			X: radius * math.Cos(angle),
-			Y: radius * math.Sin(angle),
+			X: radius * Unit(math.Cos(float64(angle))),
+			Y: radius * Unit(math.Sin(float64(angle))),
 			Z: -tipHeight / 2,
 		})
 	}
@@ -178,16 +184,16 @@ func buildRocketFaces(size float64, radius float64, baseColor color.Color, stage
 	for stage := 0; stage < stages; stage++ {
 		startIndex := len(vertices)
 		for i := 0; i < 360; i += 10 {
-			angle := degreesToRadians(float64(i))
+			angle := Degrees(i).ToRadians()
 			vertices = append(vertices, Point3D{
-				X: radius * math.Cos(angle),
-				Y: radius * math.Sin(angle),
-				Z: -(float64(stage)*bodyHeight + tipHeight/2),
+				X: radius * Unit(math.Cos(float64(angle))),
+				Y: radius * Unit(math.Sin(float64(angle))),
+				Z: -(Unit(stage)*bodyHeight + tipHeight/2),
 			})
 			vertices = append(vertices, Point3D{
-				X: radius * math.Cos(angle),
-				Y: radius * math.Sin(angle),
-				Z: -(float64(stage+1)*bodyHeight + tipHeight/2),
+				X: radius * Unit(math.Cos(float64(angle))),
+				Y: radius * Unit(math.Sin(float64(angle))),
+				Z: -(Unit(stage+1)*bodyHeight + tipHeight/2),
 			})
 		}
 		bodyVertexCount := len(vertices) - startIndex
@@ -214,4 +220,72 @@ func buildRocketFaces(size float64, radius float64, baseColor color.Color, stage
 		faces = append(faces, FaceData{face: [3]Point3D{p1, p2, p3}, color: stageColor})
 	}
 	return faces
+}
+
+func NewOrientationObject(w *ThreeDWidget) *ThreeDShape {
+	size := Unit(5)
+	thickness := size / 20
+
+	faces := []FaceData{
+		{
+			face: [3]Point3D{
+				{X: 0, Y: -thickness, Z: -thickness},
+				{X: size, Y: -thickness, Z: -thickness},
+				{X: 0, Y: thickness, Z: -thickness},
+			},
+			color: color.RGBA{R: 255, A: 255},
+		},
+		{
+			face: [3]Point3D{
+				{X: size, Y: -thickness, Z: -thickness},
+				{X: size, Y: thickness, Z: -thickness},
+				{X: 0, Y: thickness, Z: -thickness},
+			},
+			color: color.RGBA{R: 255, A: 255},
+		},
+		{
+			face: [3]Point3D{
+				{X: -thickness, Y: 0, Z: -thickness},
+				{X: -thickness, Y: size, Z: -thickness},
+				{X: thickness, Y: 0, Z: -thickness},
+			},
+			color: color.RGBA{R: 255, G: 255, A: 255},
+		},
+		{
+			face: [3]Point3D{
+				{X: -thickness, Y: size, Z: -thickness},
+				{X: thickness, Y: size, Z: -thickness},
+				{X: thickness, Y: 0, Z: -thickness},
+			},
+			color: color.RGBA{R: 255, G: 255, A: 255},
+		},
+		{
+			face: [3]Point3D{
+				{X: -thickness, Y: -thickness, Z: 0},
+				{X: -thickness, Y: -thickness, Z: size},
+				{X: thickness, Y: -thickness, Z: 0},
+			},
+			color: color.RGBA{B: 255, A: 255},
+		},
+		{
+			face: [3]Point3D{
+				{X: -thickness, Y: -thickness, Z: size},
+				{X: thickness, Y: -thickness, Z: size},
+				{X: thickness, Y: -thickness, Z: 0},
+			},
+			color: color.RGBA{B: 255, A: 255},
+		},
+	}
+
+	orientationObject := ThreeDShape{
+		faces:    faces,
+		Position: Point3D{},
+		Rotation: Rotation3D{},
+		widget:   w,
+	}
+	w.RegisterAnimation(func() {
+		orientationObject.Position = w.camera.UnProject(Point2D{X: 150, Y: 150}, 20)
+	})
+	w.AddObject(&orientationObject)
+	return &orientationObject
 }

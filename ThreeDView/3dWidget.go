@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	Width  = int64(800)
-	Height = int64(600)
+	Width  = Pixel(800)
+	Height = Pixel(600)
 )
 
 type ThreeDWidget struct {
@@ -35,7 +35,7 @@ func NewThreeDWidget() *ThreeDWidget {
 	w.bgColor = color.Transparent
 	w.renderFaceOutlines = false
 	w.renderFaceColors = true
-	standardCamera := NewCamera(Point3D{}, Point3D{}, 0)
+	standardCamera := NewCamera(Point3D{}, Rotation3D{})
 	w.camera = &standardCamera
 	w.objects = []*ThreeDShape{}
 	w.image = canvas.NewImageFromImage(w.render())
@@ -88,9 +88,9 @@ func (w *ThreeDWidget) render() image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, int(Width), int(Height)))
 	draw.Draw(img, img.Bounds(), &image.Uniform{C: w.bgColor}, image.Point{}, draw.Src)
 
-	depthBuffer := make([][]float64, Height)
+	depthBuffer := make([][]Unit, Height)
 	for i := range depthBuffer {
-		depthBuffer[i] = make([]float64, Width)
+		depthBuffer[i] = make([]Unit, Width)
 		for j := range depthBuffer[i] {
 			depthBuffer[i][j] = math.MaxFloat64
 		}
@@ -172,8 +172,8 @@ type threeDRenderer struct {
 
 func (r *threeDRenderer) Layout(size fyne.Size) {
 	r.image.Resize(size)
-	Width = int64(size.Width)
-	Height = int64(size.Height)
+	Width = Pixel(size.Width)
+	Height = Pixel(size.Height)
 }
 
 func (r *threeDRenderer) MinSize() fyne.Size {
@@ -190,7 +190,7 @@ func (r *threeDRenderer) Objects() []fyne.CanvasObject {
 
 func (r *threeDRenderer) Destroy() {}
 
-func drawFace(img *image.RGBA, face ProjectedFaceData, depthBuffer [][]float64, renderFaceOutlines bool, renderFaceColors bool) {
+func drawFace(img *image.RGBA, face ProjectedFaceData, depthBuffer [][]Unit, renderFaceOutlines bool, renderFaceColors bool) {
 	if renderFaceColors {
 		drawFilledTriangle(img, face.face[0], face.face[1], face.face[2], face.color, depthBuffer, face.distance)
 	}
@@ -212,20 +212,20 @@ func drawFace(img *image.RGBA, face ProjectedFaceData, depthBuffer [][]float64, 
 	drawLine(img, point3, point1, outlineColor, depthBuffer, face.distance)
 }
 
-func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color, depthBuffer [][]float64, depth float64) {
+func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color, depthBuffer [][]Unit, depth Unit) {
 	x0 := point1.X
 	y0 := point1.Y
 	x1 := point2.X
 	y1 := point2.Y
-	dx := abs(x1 - x0)
-	dy := abs(y1 - y0)
-	sx := int64(-1)
+	dx := math.Abs(float64(x1 - x0))
+	dy := math.Abs(float64(y1 - y0))
+	sx := Pixel(-1)
 	if x0 < x1 {
-		sx = int64(1)
+		sx = Pixel(1)
 	}
-	sy := int64(-1)
+	sy := Pixel(-1)
 	if y0 < y1 {
-		sy = int64(1)
+		sy = Pixel(1)
 	}
 	err := dx - dy
 
@@ -251,7 +251,7 @@ func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color, de
 	}
 }
 
-func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Color, depthBuffer [][]float64, depth float64) {
+func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Color, depthBuffer [][]Unit, depth Unit) {
 	if p2.Y < p1.Y {
 		p1, p2 = p2, p1
 	}
@@ -262,7 +262,7 @@ func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Col
 		p2, p3 = p3, p2
 	}
 
-	drawHorizontalLine := func(y, x1, x2 int64, color color.Color) {
+	drawHorizontalLine := func(y, x1, x2 Pixel, color color.Color) {
 		if x1 > x2 {
 			x1, x2 = x2, x1
 		}
@@ -276,7 +276,7 @@ func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Col
 		}
 	}
 
-	interpolateX := func(y, y1, y2, x1, x2 int64) int64 {
+	interpolateX := func(y, y1, y2, x1, x2 Pixel) Pixel {
 		if y1 == y2 {
 			return x1
 		}
@@ -296,18 +296,7 @@ func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Col
 	}
 }
 
-func abs(x int64) int64 {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
-func degreesToRadians(degrees float64) float64 {
-	return degrees * math.Pi / 180
-}
-
-func (w *ThreeDWidget) faceDistance(face [3]Point3D) float64 {
+func (w *ThreeDWidget) faceDistance(face [3]Point3D) Unit {
 	cameraPos := w.camera.Position
 
 	normalPos := Point3D{
@@ -316,5 +305,5 @@ func (w *ThreeDWidget) faceDistance(face [3]Point3D) float64 {
 		Z: (face[0].Z + face[1].Z + face[2].Z) / 3,
 	}
 
-	return math.Sqrt(math.Pow(normalPos.X-cameraPos.X, 2) + math.Pow(normalPos.Y-cameraPos.Y, 2) + math.Pow(normalPos.Z-cameraPos.Z, 2))
+	return Unit(math.Sqrt(math.Pow(float64(normalPos.X-cameraPos.X), 2) + math.Pow(float64(normalPos.Y-cameraPos.Y), 2) + math.Pow(float64(normalPos.Z-cameraPos.Z), 2)))
 }

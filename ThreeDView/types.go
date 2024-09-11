@@ -5,41 +5,61 @@ import (
 	"math"
 )
 
+type Degrees float64
+
+func (degrees Degrees) ToRadians() Radians {
+	return Radians(degrees * math.Pi / 180)
+}
+
+type Radians float64
+
+func (radians Radians) ToDegrees() Degrees {
+	return Degrees(radians * 180 / math.Pi)
+}
+
+type Rotation3D struct {
+	X, Y, Z Degrees
+}
+
+type Unit float64
+
+type Pixel int64
+
 type Point3D struct {
-	X, Y, Z float64
+	X, Y, Z Unit
 }
 
-func (point *Point3D) RotateX(pivot Point3D, degrees float64) {
-	radians := degreesToRadians(degrees)
+func (point *Point3D) RotateX(pivot Point3D, degrees Degrees) {
+	radians := degrees.ToRadians()
 	translatedY := point.Y - pivot.Y
 	translatedZ := point.Z - pivot.Z
-	newY := translatedY*math.Cos(radians) - translatedZ*math.Sin(radians)
-	newZ := translatedY*math.Sin(radians) + translatedZ*math.Cos(radians)
+	newY := Unit(float64(translatedY)*math.Cos(float64(radians)) - float64(translatedZ)*math.Sin(float64(radians)))
+	newZ := Unit(float64(translatedY)*math.Sin(float64(radians)) + float64(translatedZ)*math.Cos(float64(radians)))
 	point.Y = newY + pivot.Y
 	point.Z = newZ + pivot.Z
 }
 
-func (point *Point3D) RotateY(pivot Point3D, degrees float64) {
-	radians := degreesToRadians(degrees)
+func (point *Point3D) RotateY(pivot Point3D, degrees Degrees) {
+	radians := degrees.ToRadians()
 	translatedX := point.X - pivot.X
 	translatedZ := point.Z - pivot.Z
-	newX := translatedX*math.Cos(radians) + translatedZ*math.Sin(radians)
-	newZ := -translatedX*math.Sin(radians) + translatedZ*math.Cos(radians)
+	newX := Unit(float64(translatedX)*math.Cos(float64(radians)) + float64(translatedZ)*math.Sin(float64(radians)))
+	newZ := Unit(float64(-translatedX)*math.Sin(float64(radians)) + float64(translatedZ)*math.Cos(float64(radians)))
 	point.X = newX + pivot.X
 	point.Z = newZ + pivot.Z
 }
 
-func (point *Point3D) RotateZ(pivot Point3D, degrees float64) {
-	radians := degreesToRadians(degrees)
+func (point *Point3D) RotateZ(pivot Point3D, degrees Degrees) {
+	radians := degrees.ToRadians()
 	translatedX := point.X - pivot.X
 	translatedY := point.Y - pivot.Y
-	newX := translatedX*math.Cos(radians) - translatedY*math.Sin(radians)
-	newY := translatedX*math.Sin(radians) + translatedY*math.Cos(radians)
+	newX := Unit(float64(translatedX)*math.Cos(float64(radians)) - float64(translatedY)*math.Sin(float64(radians)))
+	newY := Unit(float64(translatedX)*math.Sin(float64(radians)) + float64(translatedY)*math.Cos(float64(radians)))
 	point.X = newX + pivot.X
 	point.Y = newY + pivot.Y
 }
 
-func (point *Point3D) Rotate(pivot Point3D, x, y, z float64) {
+func (point *Point3D) Rotate(pivot Point3D, x, y, z Degrees) {
 	point.RotateX(pivot, x)
 	point.RotateY(pivot, y)
 	point.RotateZ(pivot, z)
@@ -51,23 +71,29 @@ func (point *Point3D) Add(other Point3D) {
 	point.Z += other.Z
 }
 
-func (point *Point3D) Distance(other Point3D) float64 {
+func (point *Point3D) Subtract(other Point3D) {
+	point.X -= other.X
+	point.Y -= other.Y
+	point.Z -= other.Z
+}
+
+func (point *Point3D) Distance(other Point3D) Unit {
 	dx := point.X - other.X
 	dy := point.Y - other.Y
 	dz := point.Z - other.Z
-	return math.Sqrt(dx*dx + dy*dy + dz*dz)
+	return Unit(math.Sqrt(float64(dx*dx + dy*dy + dz*dz)))
 }
 
-func (point *Point3D) Magnitude() float64 {
-	return math.Sqrt(point.X*point.X + point.Y*point.Y + point.Z*point.Z)
+func (point *Point3D) Magnitude() Unit {
+	return Unit(math.Sqrt(float64(point.X*point.X + point.Y*point.Y + point.Z*point.Z)))
 }
 
-func (point *Point3D) Dot(other Point3D) float64 {
+func (point *Point3D) Dot(other Point3D) Unit {
 	return point.X*other.X + point.Y*other.Y + point.Z*other.Z
 }
 
 type Point2D struct {
-	X, Y int64
+	X, Y Pixel
 }
 
 func (point *Point2D) InBounds() bool {
@@ -77,18 +103,18 @@ func (point *Point2D) InBounds() bool {
 type FaceData struct {
 	face     [3]Point3D
 	color    color.Color
-	distance float64
+	distance Unit
 }
 
 type ProjectedFaceData struct {
 	face     [3]Point2D
 	color    color.Color
-	distance float64
+	distance Unit
 }
 
 type ThreeDShape struct {
 	faces    []FaceData
-	Rotation Point3D
+	Rotation Rotation3D
 	Position Point3D
 	widget   *ThreeDWidget
 }
@@ -113,36 +139,35 @@ func (shape *ThreeDShape) GetFaces() []FaceData {
 	return faces
 }
 
-func (shape *ThreeDShape) RotateX(degrees float64) {
+func (shape *ThreeDShape) RotateX(degrees Degrees) {
 	shape.Rotation.X += degrees
 }
 
-func (shape *ThreeDShape) RotateY(degrees float64) {
+func (shape *ThreeDShape) RotateY(degrees Degrees) {
 	shape.Rotation.Y += degrees
 }
 
-func (shape *ThreeDShape) RotateZ(degrees float64) {
+func (shape *ThreeDShape) RotateZ(degrees Degrees) {
 	shape.Rotation.Z += degrees
 }
 
-func (shape *ThreeDShape) Move(x, y, z float64) {
+func (shape *ThreeDShape) Move(x, y, z Unit) {
 	shape.Position.X += x
 	shape.Position.Y += y
 	shape.Position.Z += z
 }
 
 type Camera struct {
-	Position    Point3D
-	FocalLength float64
-	Fov         float64
-	Pitch       float64
-	Yaw         float64
-	Roll        float64
-	controller  CameraController
+	Position   Point3D
+	Fov        Degrees
+	Pitch      Degrees
+	Yaw        Degrees
+	Roll       Degrees
+	controller CameraController
 }
 
-func NewCamera(position Point3D, rotation Point3D, focalLength float64) Camera {
-	return Camera{Position: position, FocalLength: focalLength, Pitch: rotation.X, Yaw: rotation.Y, Roll: rotation.Z, Fov: 90}
+func NewCamera(position Point3D, rotation Rotation3D) Camera {
+	return Camera{Position: position, Pitch: rotation.X, Yaw: rotation.Y, Roll: rotation.Z, Fov: 90}
 }
 
 func (camera *Camera) SetController(controller CameraController) {
@@ -151,28 +176,47 @@ func (camera *Camera) SetController(controller CameraController) {
 }
 
 func (camera *Camera) Project(point Point3D) Point2D {
-	point.RotateX(camera.Position, camera.Pitch)
-	point.RotateY(camera.Position, camera.Yaw)
-	point.RotateZ(camera.Position, camera.Roll)
-
-	translatedX := point.X - camera.Position.X
-	translatedY := point.Y - camera.Position.Y
-	translatedZ := point.Z - camera.Position.Z
-
-	if translatedZ == 0 {
-		translatedZ = 0.000001
+	translatedPoint := Point3D{
+		X: point.X - camera.Position.X,
+		Y: point.Y - camera.Position.Y,
+		Z: point.Z - camera.Position.Z,
 	}
 
-	fovRadians := degreesToRadians(camera.Fov)
-	scale := camera.FocalLength / math.Tan(fovRadians/2)
+	translatedPoint.Rotate(camera.Position, -camera.Yaw, -camera.Pitch, -camera.Roll)
 
-	x2D := (translatedX * scale / translatedZ) + float64(Width)/2
-	y2D := (translatedY * scale / translatedZ) + float64(Height)/2
+	epsilon := 1e-6
+	if math.Abs(float64(translatedPoint.Z)) < epsilon {
+		translatedPoint.Z = Unit(epsilon)
+	}
 
-	x2D = math.Max(math.Min(x2D, float64(math.MaxInt64)), float64(math.MinInt64))
-	y2D = math.Max(math.Min(y2D, float64(math.MaxInt64)), float64(math.MinInt64))
+	fovRadians := camera.Fov.ToRadians()
+	scale := Unit(float64(Width) / (2 * math.Tan(float64(fovRadians/2))))
 
-	return Point2D{int64(x2D), int64(y2D)}
+	x2D := (translatedPoint.X * scale / translatedPoint.Z) + Unit(Width)/2
+	y2D := (translatedPoint.Y * scale / translatedPoint.Z) + Unit(Height)/2
+
+	return Point2D{Pixel(x2D), Pixel(y2D)}
+}
+
+func (camera *Camera) UnProject(point2d Point2D, distance Unit) Point3D {
+	x := Unit((float64(point2d.X) - float64(Width)/2) / (float64(Width) / 2))
+	y := Unit((float64(point2d.Y) - float64(Height)/2) / (float64(Height) / 2))
+
+	fovRadians := camera.Fov.ToRadians()
+	scale := Unit(math.Tan(float64(fovRadians)/2) * float64(distance))
+
+	worldX := x * scale
+	worldY := y * scale
+	worldZ := -distance
+
+	pointInCameraSpace := Point3D{X: worldX, Y: worldY, Z: worldZ}
+
+	pointInCameraSpace.Rotate(camera.Position, camera.Yaw, camera.Pitch, camera.Roll)
+
+	pointInWorldSpace := pointInCameraSpace
+	pointInWorldSpace.Add(camera.Position)
+
+	return pointInWorldSpace
 }
 
 // IsPointInFrustum TODO: Implement this function
