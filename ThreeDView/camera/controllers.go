@@ -6,7 +6,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"log"
 	"time"
 )
 
@@ -19,7 +18,7 @@ type OrbitController struct {
 }
 
 func NewOrbitController(orbitCenter Point3D) *OrbitController {
-	return &OrbitController{target: orbitCenter, distance: 500, rotation: Rotation3D{X: 45}}
+	return &OrbitController{target: orbitCenter, distance: 500, rotation: Rotation3D{Y: 300}}
 }
 
 func (controller *OrbitController) setCamera(camera *Camera) {
@@ -37,7 +36,7 @@ func (controller *OrbitController) Move(distance Unit) {
 }
 
 func (controller *OrbitController) PointAtTarget() {
-	direction := DirectionVector{controller.target}
+	direction := DirectionVector{Point3D: controller.target}
 	direction.Subtract(controller.camera.Position)
 	direction.Normalize()
 	rotation := direction.ToRotation()
@@ -50,26 +49,20 @@ func (controller *OrbitController) Rotate(rotation Rotation3D) {
 	controller.updatePosition()
 }
 
-func (controller *OrbitController) onDrag(x, y float32) {
-	// TODO: drag x: always rotate around the GLOBAL z axis
-	// TODO: drag y: rotate around the GLOBAL x and y axis based on the GLOBAL y axis and resulting percentage of x and y on how much they contribute to the rotation in the direction up/down in the viewport
+func (controller *OrbitController) OnDrag(x, y float32) {
+	controller.Rotate(Rotation3D{Y: Degrees(-y), Z: Degrees(x)})
 }
 
-func (controller *OrbitController) onDragEnd() {}
+func (controller *OrbitController) OnDragEnd() {}
 
-func (controller *OrbitController) onScroll(_, y float32) {
-	controller.Move(Unit(y / 3))
+func (controller *OrbitController) OnScroll(_, y float32) {
+	controller.Move(Unit(y))
 }
 
 func (controller *OrbitController) updatePosition() {
-	direction := controller.rotation.ToDirectionVector()
-
-	log.Println(controller.rotation, direction, direction.ToRotation())
-
-	controller.camera.Position.X = controller.target.X + controller.distance*direction.X
-	controller.camera.Position.Y = controller.target.Y + controller.distance*direction.Y
-	controller.camera.Position.Z = controller.target.Z + controller.distance*direction.Z
-
+	controller.camera.Position = controller.target
+	controller.camera.Position.Add(Point3D{X: controller.distance})
+	controller.camera.Position.Rotate(controller.target, controller.rotation)
 	controller.PointAtTarget()
 }
 
