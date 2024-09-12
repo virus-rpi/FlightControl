@@ -40,5 +40,5 @@ func simulationTab() fyne.CanvasObject {
 	separateButton.Resize(fyne.NewSize(100, 50))
 	buttonContainer := container.NewVBox(separateButton)
 
-	return container.NewBorder(nil, nil, nil, nil, threeDEnv, buttonContainer)
+	return container.NewBorder(nil, buttonContainer, nil, nil, container.NewStack(threeDEnv))
 }
