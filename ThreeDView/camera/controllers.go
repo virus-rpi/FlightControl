@@ -40,7 +40,10 @@ func (controller *OrbitController) PointAtTarget() {
 	direction.Subtract(controller.camera.Position)
 	direction.Normalize()
 	rotation := direction.ToRotation()
-	controller.camera.Rotation = rotation.Minus()
+	controller.camera.Rotation.X = -rotation.X
+	controller.camera.Rotation.Y = -rotation.Y
+
+	controller.camera.Rotation.Z = controller.rotation.Z - 90
 }
 
 func (controller *OrbitController) Rotate(rotation Rotation3D) {
