@@ -166,7 +166,11 @@ func (w *ThreeDWidget) render() image.Image {
 			defer wg3d.Done()
 			objectFaces := object.GetFaces()
 			mu3d.Lock()
-			faces = append(faces, objectFaces...)
+			for _, face := range objectFaces {
+				if w.camera.IsInFrustum(face.Face[0], Unit(0.1), Unit(math.Inf(1))) || w.camera.IsInFrustum(face.Face[1], Unit(0.1), Unit(math.Inf(1))) || w.camera.IsInFrustum(face.Face[2], Unit(0.1), Unit(math.Inf(1))) {
+					faces = append(faces, face)
+				}
+			}
 			mu3d.Unlock()
 		}(object)
 	}

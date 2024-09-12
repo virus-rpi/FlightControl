@@ -31,9 +31,9 @@ func (camera *Camera) Project(point Point3D, width, height Pixel) Point2D {
 
 	translatedPoint.Rotate(Point3D{}, camera.Rotation)
 
-	epsilon := 1
+	epsilon := Unit(0.0001)
 	if math.Abs(float64(translatedPoint.Z)) < float64(epsilon) {
-		translatedPoint.Z = Unit(epsilon)
+		translatedPoint.Z = epsilon
 	}
 
 	fovRadians := camera.Fov.ToRadians()
@@ -63,4 +63,31 @@ func (camera *Camera) UnProject(point2d Point2D, distance Unit, width, height Pi
 	pointInWorldSpace.Add(camera.Position)
 
 	return pointInWorldSpace
+}
+
+// IsInFrustum checks if a point is in the camera's frustum
+func (camera *Camera) IsInFrustum(point Point3D, near, far Unit) bool {
+	translatedPoint := point
+	translatedPoint.Subtract(camera.Position)
+	translatedPoint.Rotate(Point3D{}, camera.Rotation)
+
+	fovRadians := camera.Fov.ToRadians()
+	aspectRatio := 1.0
+	tanFovOver2 := math.Tan(float64(fovRadians) / 2)
+
+	if translatedPoint.Z < near || translatedPoint.Z > far {
+		return false
+	}
+
+	rightPlaneX := translatedPoint.Z * Unit(tanFovOver2*aspectRatio)
+	if translatedPoint.X < -rightPlaneX || translatedPoint.X > rightPlaneX {
+		return false
+	}
+
+	topPlaneY := translatedPoint.Z * Unit(tanFovOver2)
+	if translatedPoint.Y < -topPlaneY || translatedPoint.Y > topPlaneY {
+		return false
+	}
+
+	return true
 }

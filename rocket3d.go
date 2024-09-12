@@ -86,5 +86,7 @@ func (rocket *Rocket) SeparateStage() {
 			seperatedStage.Rotation.Add(types.Rotation3D{X: 1, Y: 1, Z: 1})
 			time.Sleep(time.Millisecond * 10)
 		}
+		seperatedStage.Rotation.X = 90
+		seperatedStage.Position.Z = 15
 	}()
 }
