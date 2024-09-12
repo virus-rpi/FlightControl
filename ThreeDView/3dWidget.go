@@ -10,6 +10,7 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	"log"
 	"math"
 	"sort"
 	"sync"
@@ -70,16 +71,28 @@ func (w *ThreeDWidget) tickLoop() {
 }
 
 func (w *ThreeDWidget) renderLoop() {
+	var frameCount int
+	var startTime = time.Now()
+
 	for {
-		startTime := time.Now()
+		frameStartTime := time.Now()
 		frameDuration := time.Second / time.Duration(w.fpsCap)
 
 		w.image.Image = w.render()
 		go canvas.Refresh(w.image)
 
+		frameCount++
 		elapsedTime := time.Since(startTime)
-		if elapsedTime < frameDuration {
-			time.Sleep(frameDuration - elapsedTime)
+		if elapsedTime >= time.Second {
+			fps := float64(frameCount) / elapsedTime.Seconds()
+			log.Printf("FPS: %.2f", fps)
+			frameCount = 0
+			startTime = time.Now()
+		}
+
+		frameElapsedTime := time.Since(frameStartTime)
+		if frameElapsedTime < frameDuration {
+			time.Sleep(frameDuration - frameElapsedTime)
 		}
 	}
 }
@@ -149,14 +162,6 @@ func (w *ThreeDWidget) render() image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, int(Width), int(Height)))
 	draw.Draw(img, img.Bounds(), &image.Uniform{C: w.bgColor}, image.Point{}, draw.Src)
 
-	depthBuffer := make([][]Unit, Height)
-	for i := range depthBuffer {
-		depthBuffer[i] = make([]Unit, Width)
-		for j := range depthBuffer[i] {
-			depthBuffer[i][j] = Unit(math.Inf(1))
-		}
-	}
-
 	var faces []FaceData
 	var wg3d sync.WaitGroup
 	var mu3d sync.Mutex
@@ -167,7 +172,7 @@ func (w *ThreeDWidget) render() image.Image {
 			objectFaces := object.GetFaces()
 			mu3d.Lock()
 			for _, face := range objectFaces {
-				if w.camera.IsInFrustum(face.Face[0], Unit(0.1), Unit(math.Inf(1))) || w.camera.IsInFrustum(face.Face[1], Unit(0.1), Unit(math.Inf(1))) || w.camera.IsInFrustum(face.Face[2], Unit(0.1), Unit(math.Inf(1))) {
+				if w.camera.IsInFrustum(face.Face[0]) || w.camera.IsInFrustum(face.Face[1]) || w.camera.IsInFrustum(face.Face[2]) {
 					faces = append(faces, face)
 				}
 			}
@@ -203,7 +208,7 @@ func (w *ThreeDWidget) render() image.Image {
 	})
 
 	for _, face := range projectedFaces {
-		drawFace(img, face, depthBuffer, w.renderFaceOutlines, w.renderFaceColors)
+		drawFace(img, face, w.renderFaceOutlines, w.renderFaceColors)
 	}
 
 	return img
@@ -255,9 +260,9 @@ func (r *threeDRenderer) Objects() []fyne.CanvasObject {
 
 func (r *threeDRenderer) Destroy() {}
 
-func drawFace(img *image.RGBA, face ProjectedFaceData, depthBuffer [][]Unit, renderFaceOutlines bool, renderFaceColors bool) {
+func drawFace(img *image.RGBA, face ProjectedFaceData, renderFaceOutlines bool, renderFaceColors bool) {
 	if renderFaceColors {
-		drawFilledTriangle(img, face.Face[0], face.Face[1], face.Face[2], face.Color, depthBuffer, face.Distance)
+		drawFilledTriangle(img, face.Face[0], face.Face[1], face.Face[2], face.Color)
 	}
 
 	if !renderFaceOutlines {
@@ -272,12 +277,12 @@ func drawFace(img *image.RGBA, face ProjectedFaceData, depthBuffer [][]Unit, ren
 	point1 := face.Face[0]
 	point2 := face.Face[1]
 	point3 := face.Face[2]
-	drawLine(img, point1, point2, outlineColor, depthBuffer, face.Distance)
-	drawLine(img, point2, point3, outlineColor, depthBuffer, face.Distance)
-	drawLine(img, point3, point1, outlineColor, depthBuffer, face.Distance)
+	drawLine(img, point1, point2, outlineColor)
+	drawLine(img, point2, point3, outlineColor)
+	drawLine(img, point3, point1, outlineColor)
 }
 
-func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color, depthBuffer [][]Unit, depth Unit) {
+func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color) {
 	x0 := point1.X
 	y0 := point1.Y
 	x1 := point2.X
@@ -296,10 +301,7 @@ func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color, de
 
 	for {
 		if x0 >= 0 && x0 < Width && y0 >= 0 && y0 < Height {
-			if depth < depthBuffer[y0][x0] {
-				img.Set(int(x0), int(y0), lineColor)
-				depthBuffer[y0][x0] = depth
-			}
+			img.Set(int(x0), int(y0), lineColor)
 		}
 		if x0 == x1 && y0 == y1 {
 			break
@@ -316,7 +318,7 @@ func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color, de
 	}
 }
 
-func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Color, depthBuffer [][]Unit, depth Unit) {
+func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Color) {
 	if p2.Y < p1.Y {
 		p1, p2 = p2, p1
 	}
@@ -333,10 +335,7 @@ func drawFilledTriangle(img *image.RGBA, p1, p2, p3 Point2D, fillColor color.Col
 		}
 		for x := x1; x <= x2; x++ {
 			if y >= 0 && y < Height && x >= 0 && x < Width {
-				if depth < depthBuffer[y][x] {
-					img.Set(int(x), int(y), color)
-					depthBuffer[y][x] = depth
-				}
+				img.Set(int(x), int(y), color)
 			}
 		}
 	}

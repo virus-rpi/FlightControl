@@ -66,7 +66,7 @@ func (camera *Camera) UnProject(point2d Point2D, distance Unit, width, height Pi
 }
 
 // IsInFrustum checks if a point is in the camera's frustum
-func (camera *Camera) IsInFrustum(point Point3D, near, far Unit) bool {
+func (camera *Camera) IsInFrustum(point Point3D) bool {
 	translatedPoint := point
 	translatedPoint.Subtract(camera.Position)
 	translatedPoint.Rotate(Point3D{}, camera.Rotation)
@@ -75,7 +75,7 @@ func (camera *Camera) IsInFrustum(point Point3D, near, far Unit) bool {
 	aspectRatio := 1.0
 	tanFovOver2 := math.Tan(float64(fovRadians) / 2)
 
-	if translatedPoint.Z < near || translatedPoint.Z > far {
+	if translatedPoint.Z < Unit(0.1) {
 		return false
 	}
 

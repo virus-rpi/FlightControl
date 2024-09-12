@@ -31,10 +31,10 @@ type ProjectedFaceData struct {
 
 // Object represents a 3D shape in world space
 type Object struct {
-	Faces    []FaceData            // Faces of the shape in local space
-	Rotation Rotation3D            // Rotation of the shape in world space
-	Position Point3D               // Position of the shape in world space
-	Widget   ThreeDWidgetInterface // The Widget the shape is in
+	Faces    []FaceData            // Faces of the Object in local space
+	Rotation Rotation3D            // Rotation of the Object in world space
+	Position Point3D               // Position of the Object in world space
+	Widget   ThreeDWidgetInterface // The Widget the Object is in
 }
 
 // GetFaces returns the faces of the shape in world space as FaceData
