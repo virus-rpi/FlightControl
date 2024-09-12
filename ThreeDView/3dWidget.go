@@ -1,6 +1,9 @@
 package ThreeDView
 
 import (
+	. "FlightControl/ThreeDView/camera"
+	. "FlightControl/ThreeDView/object"
+	. "FlightControl/ThreeDView/types"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/widget"
@@ -21,15 +24,15 @@ var (
 // ThreeDWidget is a widget that displays 3D objects
 type ThreeDWidget struct {
 	widget.BaseWidget
-	image              *canvas.Image  // The image that is rendered on
-	camera             *Camera        // The camera of the 3D widget
-	objects            []*ThreeDShape // The objects in the 3D widget
-	tickMethods        []func()       // The methods that are called every frame
-	bgColor            color.Color    // The background color of the 3D widget
-	renderFaceOutlines bool           // Whether the faces should be rendered with outlines
-	renderFaceColors   bool           // Whether the faces should be rendered with colors
-	fpsCap             float64        // The maximum frames per second the widget should render at
-	tpsCap             float64        // The maximum ticks per second the widget should tick at
+	image              *canvas.Image // The image that is rendered on
+	camera             *Camera       // The camera of the 3D widget
+	objects            []*Object     // The objects in the 3D widget
+	tickMethods        []func()      // The methods that are called every frame
+	bgColor            color.Color   // The background color of the 3D widget
+	renderFaceOutlines bool          // Whether the faces should be rendered with outlines
+	renderFaceColors   bool          // Whether the faces should be rendered with colors
+	fpsCap             float64       // The maximum frames per second the widget should render at
+	tpsCap             float64       // The maximum ticks per second the widget should tick at
 }
 
 // NewThreeDWidget creates a new 3D widget
@@ -41,7 +44,7 @@ func NewThreeDWidget() *ThreeDWidget {
 	w.renderFaceColors = true
 	standardCamera := NewCamera(Point3D{}, Rotation3D{})
 	w.camera = &standardCamera
-	w.objects = []*ThreeDShape{}
+	w.objects = []*Object{}
 	w.image = canvas.NewImageFromImage(w.render())
 	w.fpsCap = math.Inf(1)
 	w.tpsCap = math.Inf(1)
@@ -86,9 +89,21 @@ func (w *ThreeDWidget) RegisterTickMethod(tick func()) {
 	w.tickMethods = append(w.tickMethods, tick)
 }
 
-// AddObject adds a 3D object as ThreeDShape to the widget. This should be called in the method that creates the object
-func (w *ThreeDWidget) AddObject(object *ThreeDShape) {
+// AddObject adds a 3D object as Object to the widget. This should be called in the method that creates the object
+func (w *ThreeDWidget) AddObject(object *Object) {
 	w.objects = append(w.objects, object)
+}
+
+func (w *ThreeDWidget) GetCamera() *Camera {
+	return w.camera
+}
+
+func (w *ThreeDWidget) GetWidth() Pixel {
+	return Width
+}
+
+func (w *ThreeDWidget) GetHeight() Pixel {
+	return Height
 }
 
 // SetCamera sets the camera of the 3D widget
@@ -138,7 +153,7 @@ func (w *ThreeDWidget) render() image.Image {
 	for i := range depthBuffer {
 		depthBuffer[i] = make([]Unit, Width)
 		for j := range depthBuffer[i] {
-			depthBuffer[i][j] = math.MaxFloat64
+			depthBuffer[i][j] = Unit(math.Inf(1))
 		}
 	}
 
@@ -147,7 +162,7 @@ func (w *ThreeDWidget) render() image.Image {
 	var mu3d sync.Mutex
 	wg3d.Add(len(w.objects))
 	for _, object := range w.objects {
-		go func(object *ThreeDShape) {
+		go func(object *Object) {
 			defer wg3d.Done()
 			objectFaces := object.GetFaces()
 			mu3d.Lock()
@@ -164,23 +179,23 @@ func (w *ThreeDWidget) render() image.Image {
 	for _, face := range faces {
 		go func(face FaceData) {
 			defer wg2d.Done()
-			p1 := w.camera.Project(face.face[0])
-			p2 := w.camera.Project(face.face[1])
-			p3 := w.camera.Project(face.face[2])
+			p1 := w.camera.Project(face.Face[0], Width, Height)
+			p2 := w.camera.Project(face.Face[1], Width, Height)
+			p3 := w.camera.Project(face.Face[2], Width, Height)
 
-			if !p1.InBounds() && !p2.InBounds() && !p3.InBounds() {
+			if !p1.InBounds(0, 0, Width, Height) && !p2.InBounds(0, 0, Width, Height) && !p3.InBounds(0, 0, Width, Height) {
 				return
 			}
 
 			mu.Lock()
-			projectedFaces = append(projectedFaces, ProjectedFaceData{face: [3]Point2D{p1, p2, p3}, color: face.color, distance: face.distance})
+			projectedFaces = append(projectedFaces, ProjectedFaceData{Face: [3]Point2D{p1, p2, p3}, Color: face.Color, Distance: face.Distance})
 			mu.Unlock()
 		}(face)
 	}
 	wg2d.Wait()
 
 	sort.Slice(projectedFaces, func(i, j int) bool {
-		return projectedFaces[i].distance > projectedFaces[j].distance
+		return projectedFaces[i].Distance > projectedFaces[j].Distance
 	})
 
 	for _, face := range projectedFaces {
@@ -191,20 +206,20 @@ func (w *ThreeDWidget) render() image.Image {
 }
 
 func (w *ThreeDWidget) Dragged(event *fyne.DragEvent) {
-	if controller, ok := w.camera.controller.(DragController); ok {
-		controller.onDrag(event.Dragged.DX, event.Dragged.DY)
+	if controller, ok := w.camera.Controller.(DragController); ok {
+		controller.OnDrag(event.Dragged.DX, event.Dragged.DY)
 	}
 }
 
 func (w *ThreeDWidget) DragEnd() {
-	if controller, ok := w.camera.controller.(DragController); ok {
-		controller.onDragEnd()
+	if controller, ok := w.camera.Controller.(DragController); ok {
+		controller.OnDragEnd()
 	}
 }
 
 func (w *ThreeDWidget) Scrolled(event *fyne.ScrollEvent) {
-	if controller, ok := w.camera.controller.(ScrollController); ok {
-		controller.onScroll(event.Scrolled.DX, event.Scrolled.DY)
+	if controller, ok := w.camera.Controller.(ScrollController); ok {
+		controller.OnScroll(event.Scrolled.DX, event.Scrolled.DY)
 	}
 }
 
@@ -238,7 +253,7 @@ func (r *threeDRenderer) Destroy() {}
 
 func drawFace(img *image.RGBA, face ProjectedFaceData, depthBuffer [][]Unit, renderFaceOutlines bool, renderFaceColors bool) {
 	if renderFaceColors {
-		drawFilledTriangle(img, face.face[0], face.face[1], face.face[2], face.color, depthBuffer, face.distance)
+		drawFilledTriangle(img, face.Face[0], face.Face[1], face.Face[2], face.Color, depthBuffer, face.Distance)
 	}
 
 	if !renderFaceOutlines {
@@ -246,16 +261,16 @@ func drawFace(img *image.RGBA, face ProjectedFaceData, depthBuffer [][]Unit, ren
 	}
 	var outlineColor color.Color
 	if !renderFaceColors {
-		outlineColor = face.color
+		outlineColor = face.Color
 	} else {
 		outlineColor = color.Black
 	}
-	point1 := face.face[0]
-	point2 := face.face[1]
-	point3 := face.face[2]
-	drawLine(img, point1, point2, outlineColor, depthBuffer, face.distance)
-	drawLine(img, point2, point3, outlineColor, depthBuffer, face.distance)
-	drawLine(img, point3, point1, outlineColor, depthBuffer, face.distance)
+	point1 := face.Face[0]
+	point2 := face.Face[1]
+	point3 := face.Face[2]
+	drawLine(img, point1, point2, outlineColor, depthBuffer, face.Distance)
+	drawLine(img, point2, point3, outlineColor, depthBuffer, face.Distance)
+	drawLine(img, point3, point1, outlineColor, depthBuffer, face.Distance)
 }
 
 func drawLine(img *image.RGBA, point1, point2 Point2D, lineColor color.Color, depthBuffer [][]Unit, depth Unit) {

@@ -1,11 +1,12 @@
-package ThreeDView
+package object
 
 import (
+	. "FlightControl/ThreeDView/types"
 	"image/color"
 	"math"
 )
 
-func NewCube(size Unit, position Point3D, rotation Rotation3D, color color.Color, w *ThreeDWidget) *ThreeDShape {
+func NewCube(size Unit, position Point3D, rotation Rotation3D, color color.Color, w ThreeDWidgetInterface) *Object {
 	half := size / 2
 	vertices := []Point3D{
 		{X: -half, Y: -half, Z: -half},
@@ -33,20 +34,20 @@ func NewCube(size Unit, position Point3D, rotation Rotation3D, color color.Color
 		p2 := vertices[face[1]]
 		p3 := vertices[face[2]]
 
-		facesData[i] = FaceData{face: [3]Point3D{p1, p2, p3}, color: color}
+		facesData[i] = FaceData{Face: [3]Point3D{p1, p2, p3}, Color: color}
 	}
 
-	cube := ThreeDShape{
-		faces:    facesData,
+	cube := Object{
+		Faces:    facesData,
 		Position: position,
 		Rotation: rotation,
-		widget:   w,
+		Widget:   w,
 	}
 	w.AddObject(&cube)
 	return &cube
 }
 
-func NewPlane(size Unit, position Point3D, rotation Rotation3D, color color.Color, w *ThreeDWidget, resolution int) *ThreeDShape {
+func NewPlane(size Unit, position Point3D, rotation Rotation3D, color color.Color, w ThreeDWidgetInterface, resolution int) *Object {
 	half := size / 2
 	step := size / Unit(resolution)
 	var vertices []Point3D
@@ -80,14 +81,14 @@ func NewPlane(size Unit, position Point3D, rotation Rotation3D, color color.Colo
 		p2 := vertices[face[1]]
 		p3 := vertices[face[2]]
 
-		facesData[i] = FaceData{face: [3]Point3D{p1, p2, p3}, color: color}
+		facesData[i] = FaceData{Face: [3]Point3D{p1, p2, p3}, Color: color}
 	}
 
-	plane := ThreeDShape{
-		faces:    facesData,
+	plane := Object{
+		Faces:    facesData,
 		Position: position,
 		Rotation: rotation,
-		widget:   w,
+		Widget:   w,
 	}
 	w.AddObject(&plane)
 	return &plane
@@ -116,34 +117,34 @@ func adjustColorBrightness(c color.RGBA, factor float64, stage int) color.RGBA {
 }
 
 type Rocket struct {
-	ThreeDShape
+	Object
 	Stages int
 	Radius Unit
 	Size   Unit
 }
 
-func NewRocket(size Unit, position Point3D, rotation Rotation3D, baseColor color.Color, w *ThreeDWidget, stages int, radius Unit) *Rocket {
+func NewRocket(size Unit, position Point3D, rotation Rotation3D, baseColor color.Color, w ThreeDWidgetInterface, stages int, radius Unit) *Rocket {
 	faces := buildRocketFaces(size, radius, baseColor, stages)
 
 	rocket := Rocket{
-		ThreeDShape: ThreeDShape{
-			faces:    faces,
+		Object: Object{
+			Faces:    faces,
 			Position: position,
 			Rotation: rotation,
-			widget:   w,
+			Widget:   w,
 		},
 		Stages: stages,
 		Radius: radius,
 		Size:   size,
 	}
-	w.AddObject(&rocket.ThreeDShape)
+	w.AddObject(&rocket.Object)
 	return &rocket
 }
 
 func (rocket *Rocket) RemoveStage() {
 	if rocket.Stages > 1 {
 		rocket.Stages--
-		rocket.faces = buildRocketFaces(rocket.Size, rocket.Radius, rocket.faces[0].color, rocket.Stages)
+		rocket.Faces = buildRocketFaces(rocket.Size, rocket.Radius, rocket.Faces[0].Color, rocket.Stages)
 	}
 }
 
@@ -166,12 +167,12 @@ func buildRocketFaces(size Unit, radius Unit, baseColor color.Color, stages int)
 		p1 := vertices[i]
 		p2 := vertices[i+1]
 		p3 := vertices[tipVertexCount]
-		faces = append(faces, FaceData{face: [3]Point3D{p1, p2, p3}, color: baseColor})
+		faces = append(faces, FaceData{Face: [3]Point3D{p1, p2, p3}, Color: baseColor})
 	}
 	p1 := vertices[tipVertexCount-1]
 	p2 := vertices[0]
 	p3 := vertices[tipVertexCount]
-	faces = append(faces, FaceData{face: [3]Point3D{p1, p2, p3}, color: baseColor})
+	faces = append(faces, FaceData{Face: [3]Point3D{p1, p2, p3}, Color: baseColor})
 
 	bodyHeight := size / 2
 	baseColorRGBA := baseColor.(color.RGBA)
@@ -204,87 +205,87 @@ func buildRocketFaces(size Unit, radius Unit, baseColor color.Color, stages int)
 			p1 := vertices[startIndex+i]
 			p2 := vertices[startIndex+i+1]
 			p3 := vertices[startIndex+i+2]
-			faces = append(faces, FaceData{face: [3]Point3D{p1, p2, p3}, color: stageColor})
+			faces = append(faces, FaceData{Face: [3]Point3D{p1, p2, p3}, Color: stageColor})
 			p1 = vertices[startIndex+i+1]
 			p2 = vertices[startIndex+i+3]
 			p3 = vertices[startIndex+i+2]
-			faces = append(faces, FaceData{face: [3]Point3D{p1, p2, p3}, color: stageColor})
+			faces = append(faces, FaceData{Face: [3]Point3D{p1, p2, p3}, Color: stageColor})
 		}
 		p1 = vertices[startIndex+bodyVertexCount-2]
 		p2 = vertices[startIndex+bodyVertexCount-1]
 		p3 = vertices[startIndex]
-		faces = append(faces, FaceData{face: [3]Point3D{p1, p2, p3}, color: stageColor})
+		faces = append(faces, FaceData{Face: [3]Point3D{p1, p2, p3}, Color: stageColor})
 		p1 = vertices[startIndex+bodyVertexCount-1]
 		p2 = vertices[startIndex+1]
 		p3 = vertices[startIndex]
-		faces = append(faces, FaceData{face: [3]Point3D{p1, p2, p3}, color: stageColor})
+		faces = append(faces, FaceData{Face: [3]Point3D{p1, p2, p3}, Color: stageColor})
 	}
 	return faces
 }
 
-func NewOrientationObject(w *ThreeDWidget) *ThreeDShape {
+func NewOrientationObject(w ThreeDWidgetInterface) *Object {
 	size := Unit(5)
 	thickness := size / 20
 
 	faces := []FaceData{
 		{
-			face: [3]Point3D{
+			Face: [3]Point3D{
 				{X: 0, Y: -thickness, Z: -thickness},
 				{X: size, Y: -thickness, Z: -thickness},
 				{X: 0, Y: thickness, Z: -thickness},
 			},
-			color: color.RGBA{R: 255, A: 255},
+			Color: color.RGBA{R: 255, A: 255},
 		},
 		{
-			face: [3]Point3D{
+			Face: [3]Point3D{
 				{X: size, Y: -thickness, Z: -thickness},
 				{X: size, Y: thickness, Z: -thickness},
 				{X: 0, Y: thickness, Z: -thickness},
 			},
-			color: color.RGBA{R: 255, A: 255},
+			Color: color.RGBA{R: 255, A: 255},
 		},
 		{
-			face: [3]Point3D{
+			Face: [3]Point3D{
 				{X: -thickness, Y: 0, Z: -thickness},
 				{X: -thickness, Y: size, Z: -thickness},
 				{X: thickness, Y: 0, Z: -thickness},
 			},
-			color: color.RGBA{R: 255, G: 255, A: 255},
+			Color: color.RGBA{R: 255, G: 255, A: 255},
 		},
 		{
-			face: [3]Point3D{
+			Face: [3]Point3D{
 				{X: -thickness, Y: size, Z: -thickness},
 				{X: thickness, Y: size, Z: -thickness},
 				{X: thickness, Y: 0, Z: -thickness},
 			},
-			color: color.RGBA{R: 255, G: 255, A: 255},
+			Color: color.RGBA{R: 255, G: 255, A: 255},
 		},
 		{
-			face: [3]Point3D{
+			Face: [3]Point3D{
 				{X: -thickness, Y: -thickness, Z: 0},
 				{X: -thickness, Y: -thickness, Z: size},
 				{X: thickness, Y: -thickness, Z: 0},
 			},
-			color: color.RGBA{B: 255, A: 255},
+			Color: color.RGBA{B: 255, A: 255},
 		},
 		{
-			face: [3]Point3D{
+			Face: [3]Point3D{
 				{X: -thickness, Y: -thickness, Z: size},
 				{X: thickness, Y: -thickness, Z: size},
 				{X: thickness, Y: -thickness, Z: 0},
 			},
-			color: color.RGBA{B: 255, A: 255},
+			Color: color.RGBA{B: 255, A: 255},
 		},
 	}
 
-	orientationObject := ThreeDShape{
-		faces:    faces,
+	orientationObject := Object{
+		Faces:    faces,
 		Position: Point3D{},
 		Rotation: Rotation3D{},
-		widget:   w,
+		Widget:   w,
 	}
 	w.RegisterTickMethod(func() {
-		orientationObject.Position = w.camera.UnProject(Point2D{X: 150, Y: 150}, 20)
+		orientationObject.Position = w.GetCamera().UnProject(Point2D{X: 150, Y: 150}, 20, w.GetWidth(), w.GetHeight())
 	})
 	w.AddObject(&orientationObject)
 	return &orientationObject

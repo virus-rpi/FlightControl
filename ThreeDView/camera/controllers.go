@@ -1,12 +1,12 @@
-package ThreeDView
+package camera
 
 import (
+	. "FlightControl/ThreeDView/types"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"log"
-	"math"
 	"time"
 )
 
@@ -19,7 +19,7 @@ type OrbitController struct {
 }
 
 func NewOrbitController(orbitCenter Point3D) *OrbitController {
-	return &OrbitController{target: orbitCenter, distance: 500, rotation: Rotation3D{X: 45, Z: 180}}
+	return &OrbitController{target: orbitCenter, distance: 500, rotation: Rotation3D{X: 45}}
 }
 
 func (controller *OrbitController) setCamera(camera *Camera) {
@@ -37,7 +37,11 @@ func (controller *OrbitController) Move(distance Unit) {
 }
 
 func (controller *OrbitController) PointAtTarget() {
-	controller.camera.Rotation = controller.rotation
+	direction := DirectionVector{controller.target}
+	direction.Subtract(controller.camera.Position)
+	direction.Normalize()
+	rotation := direction.ToRotation()
+	controller.camera.Rotation = rotation.Minus()
 }
 
 func (controller *OrbitController) Rotate(rotation Rotation3D) {
@@ -49,22 +53,8 @@ func (controller *OrbitController) Rotate(rotation Rotation3D) {
 func (controller *OrbitController) onDrag(x, y float32) {
 	// TODO: drag x: always rotate around the GLOBAL z axis
 	// TODO: drag y: rotate around the GLOBAL x and y axis based on the GLOBAL y axis and resulting percentage of x and y on how much they contribute to the rotation in the direction up/down in the viewport
-	log.Println("drag", x, y)
-	upward := Point3D{X: 0, Y: 1, Z: 0}
-	upward.Normalize()
-
-	totalUpward := math.Abs(float64(upward.X)) + math.Abs(float64(upward.Y))
-	percentUpwardX := math.Abs(float64(upward.X)) / totalUpward
-	percentUpwardY := math.Abs(float64(upward.Y)) / totalUpward
-
-	rotation := Rotation3D{
-		X: Degrees(float64(y) * percentUpwardX),
-		Y: Degrees(float64(y) * percentUpwardY),
-		Z: Degrees(x),
-	}
-
-	controller.Rotate(rotation)
 }
+
 func (controller *OrbitController) onDragEnd() {}
 
 func (controller *OrbitController) onScroll(_, y float32) {
@@ -73,13 +63,37 @@ func (controller *OrbitController) onScroll(_, y float32) {
 
 func (controller *OrbitController) updatePosition() {
 	direction := controller.rotation.ToDirectionVector()
-	direction.Normalize()
+
+	log.Println(controller.rotation, direction, direction.ToRotation())
 
 	controller.camera.Position.X = controller.target.X + controller.distance*direction.X
 	controller.camera.Position.Y = controller.target.Y + controller.distance*direction.Y
 	controller.camera.Position.Z = controller.target.Z + controller.distance*direction.Z
 
 	controller.PointAtTarget()
+}
+
+func (controller *OrbitController) GetRotationSlider() *fyne.Container {
+	sliderYaw := widget.NewSlider(-360, 360)
+	sliderYaw.Value = float64(controller.rotation.X)
+	sliderYaw.OnChanged = func(value float64) {
+		controller.rotation.X = Degrees(value)
+		controller.updatePosition()
+	}
+	sliderPitch := widget.NewSlider(-360, 360)
+	sliderPitch.Value = float64(controller.rotation.Y)
+	sliderPitch.OnChanged = func(value float64) {
+		controller.rotation.Y = Degrees(value)
+		controller.updatePosition()
+	}
+	sliderRoll := widget.NewSlider(-360, 360)
+	sliderRoll.Value = float64(controller.rotation.Z)
+	sliderRoll.OnChanged = func(value float64) {
+		controller.rotation.Z = Degrees(value)
+		controller.updatePosition()
+	}
+	sliderContainer := container.NewVBox(sliderYaw, sliderPitch, sliderRoll)
+	return sliderContainer
 }
 
 type ManualController struct {
@@ -158,7 +172,7 @@ func (controller *ManualController) GetInfoLabel() *widget.Label {
 		ticker := time.NewTicker(time.Second / 30)
 		defer ticker.Stop()
 		for range ticker.C {
-			label.SetText(fmt.Sprintf("X: %.2f Y: %.2f Z: %.2f      Yaw: %.2f Pitch: %.2f Roll: %.2f",
+			label.SetText(fmt.Sprintf("X: %d Y: %d Z: %d      Yaw: %d Pitch: %d Roll: %d",
 				controller.camera.Position.X, controller.camera.Position.Y, controller.camera.Position.Z,
 				controller.camera.Rotation.X, controller.camera.Rotation.Y, controller.camera.Rotation.Z))
 			label.Refresh()

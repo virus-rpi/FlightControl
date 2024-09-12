@@ -2,7 +2,11 @@ package main
 
 import (
 	"FlightControl/ThreeDView"
+	"FlightControl/ThreeDView/camera"
+	"FlightControl/ThreeDView/object"
+	"FlightControl/ThreeDView/types"
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 	"image/color"
 )
 
@@ -11,14 +15,16 @@ func simulationTab() fyne.CanvasObject {
 	threeDEnv.SetBackgroundColor(color.RGBA{R: 135, G: 206, B: 235, A: 255})
 	threeDEnv.SetFPSCap(60)
 
-	ThreeDView.NewPlane(1000, ThreeDView.Point3D{X: 0, Y: 0, Z: 0}, ThreeDView.Rotation3D{X: 0, Y: 0, Z: 0}, color.RGBA{G: 255, A: 255}, threeDEnv, 5)
-	ThreeDView.NewRocket(300, ThreeDView.Point3D{X: 0, Y: 0, Z: 320}, ThreeDView.Rotation3D{X: 0, Y: 0, Z: 0}, color.RGBA{R: 255, G: 100, B: 10, A: 255}, threeDEnv, 2, 15)
-	ThreeDView.NewOrientationObject(threeDEnv)
+	object.NewPlane(1000, types.Point3D{X: 0, Y: 0, Z: 0}, types.Rotation3D{X: 0, Y: 0, Z: 0}, color.RGBA{G: 255, A: 255}, threeDEnv, 5)
+	object.NewRocket(300, types.Point3D{X: 0, Y: 0, Z: 320}, types.Rotation3D{X: 0, Y: 0, Z: 0}, color.RGBA{R: 255, G: 100, B: 10, A: 255}, threeDEnv, 2, 15)
+	object.NewOrientationObject(threeDEnv)
 
-	camera := ThreeDView.NewCamera(ThreeDView.Point3D{Y: 500, Z: 200}, ThreeDView.Rotation3D{})
-	orbitController := ThreeDView.NewOrbitController(ThreeDView.Point3D{X: 0, Y: 0, Z: 100})
-	camera.SetController(orbitController)
-	threeDEnv.SetCamera(&camera)
+	envCamera := camera.NewCamera(types.Point3D{Y: 500, Z: 200}, types.Rotation3D{})
+	orbitController := camera.NewOrbitController(types.Point3D{X: 0, Y: 0, Z: 100})
+	envCamera.SetController(orbitController)
+	threeDEnv.SetCamera(&envCamera)
 
-	return threeDEnv
+	slider := orbitController.GetRotationSlider()
+
+	return container.NewBorder(nil, nil, nil, nil, threeDEnv, slider)
 }
