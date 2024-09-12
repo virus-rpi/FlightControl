@@ -71,9 +71,6 @@ func (w *ThreeDWidget) tickLoop() {
 }
 
 func (w *ThreeDWidget) renderLoop() {
-	var frameCount int
-	var startTime = time.Now()
-
 	for {
 		frameStartTime := time.Now()
 		frameDuration := time.Second / time.Duration(w.fpsCap)
@@ -81,18 +78,12 @@ func (w *ThreeDWidget) renderLoop() {
 		w.image.Image = w.render()
 		go canvas.Refresh(w.image)
 
-		frameCount++
-		elapsedTime := time.Since(startTime)
-		if elapsedTime >= time.Second {
-			fps := float64(frameCount) / elapsedTime.Seconds()
-			log.Printf("FPS: %.2f", fps)
-			frameCount = 0
-			startTime = time.Now()
-		}
-
 		frameElapsedTime := time.Since(frameStartTime)
 		if frameElapsedTime < frameDuration {
 			time.Sleep(frameDuration - frameElapsedTime)
+		}
+		if frameElapsedTime > frameDuration && frameDuration != 0 {
+			log.Println("WARNING: Frame took too long to render (", frameElapsedTime, " > ", frameDuration, ")")
 		}
 	}
 }
