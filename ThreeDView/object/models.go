@@ -290,3 +290,14 @@ func NewOrientationObject(w ThreeDWidgetInterface) *Object {
 	w.AddObject(&orientationObject)
 	return &orientationObject
 }
+
+func NewEmpty(w ThreeDWidgetInterface) *Object {
+	empty := Object{
+		Faces:    nil,
+		Position: Point3D{},
+		Rotation: Rotation3D{},
+		Widget:   w,
+	}
+	w.AddObject(&empty)
+	return &empty
+}

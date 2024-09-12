@@ -54,3 +54,7 @@ func (object *Object) GetFaces() []FaceData {
 	wg.Wait()
 	return faces
 }
+
+func (object *Object) GetPosition() Point3D {
+	return object.Position
+}
