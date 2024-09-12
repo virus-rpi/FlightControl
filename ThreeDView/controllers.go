@@ -19,7 +19,12 @@ type OrbitController struct {
 }
 
 func NewOrbitController(orbitCenter Point3D) *OrbitController {
-	return &OrbitController{target: orbitCenter, distance: 500}
+	return &OrbitController{target: orbitCenter, distance: 500, rotation: Rotation3D{X: 45, Z: 180}}
+}
+
+func (controller *OrbitController) setCamera(camera *Camera) {
+	controller.BaseController.camera = camera
+	controller.updatePosition()
 }
 
 func (controller *OrbitController) SetTarget(center Point3D) {
@@ -52,19 +57,14 @@ func (controller *OrbitController) onDrag(x, y float32) {
 	percentUpwardX := math.Abs(float64(upward.X)) / totalUpward
 	percentUpwardY := math.Abs(float64(upward.Y)) / totalUpward
 
-	log.Println("u", percentUpwardX, percentUpwardY)
-
 	rotation := Rotation3D{
 		X: Degrees(float64(y) * percentUpwardX),
 		Y: Degrees(float64(y) * percentUpwardY),
 		Z: Degrees(x),
 	}
 
-	log.Println(rotation, controller.rotation)
-
 	controller.Rotate(rotation)
 }
-
 func (controller *OrbitController) onDragEnd() {}
 
 func (controller *OrbitController) onScroll(_, y float32) {
