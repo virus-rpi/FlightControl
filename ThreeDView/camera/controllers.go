@@ -63,33 +63,11 @@ func (controller *OrbitController) OnScroll(_, y float32) {
 }
 
 func (controller *OrbitController) updatePosition() {
-	controller.camera.Position = controller.target
-	controller.camera.Position.Add(Point3D{X: controller.distance})
-	controller.camera.Position.Rotate(controller.target, controller.rotation)
+	newPosition := controller.target
+	newPosition.Add(Point3D{X: controller.distance})
+	newPosition.Rotate(controller.target, controller.rotation)
+	controller.camera.Position = newPosition
 	controller.PointAtTarget()
-}
-
-func (controller *OrbitController) GetRotationSlider() *fyne.Container {
-	sliderYaw := widget.NewSlider(-360, 360)
-	sliderYaw.Value = float64(controller.rotation.X)
-	sliderYaw.OnChanged = func(value float64) {
-		controller.rotation.X = Degrees(value)
-		controller.updatePosition()
-	}
-	sliderPitch := widget.NewSlider(-360, 360)
-	sliderPitch.Value = float64(controller.rotation.Y)
-	sliderPitch.OnChanged = func(value float64) {
-		controller.rotation.Y = Degrees(value)
-		controller.updatePosition()
-	}
-	sliderRoll := widget.NewSlider(-360, 360)
-	sliderRoll.Value = float64(controller.rotation.Z)
-	sliderRoll.OnChanged = func(value float64) {
-		controller.rotation.Z = Degrees(value)
-		controller.updatePosition()
-	}
-	sliderContainer := container.NewVBox(sliderYaw, sliderPitch, sliderRoll)
-	return sliderContainer
 }
 
 type ManualController struct {

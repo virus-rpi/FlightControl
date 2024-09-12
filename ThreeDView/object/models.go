@@ -224,7 +224,7 @@ func buildRocketFaces(size Unit, radius Unit, baseColor color.Color, stages int)
 }
 
 func NewOrientationObject(w ThreeDWidgetInterface) *Object {
-	size := Unit(5)
+	size := Unit(2)
 	thickness := size / 20
 
 	faces := []FaceData{
@@ -285,7 +285,7 @@ func NewOrientationObject(w ThreeDWidgetInterface) *Object {
 		Widget:   w,
 	}
 	w.RegisterTickMethod(func() {
-		orientationObject.Position = w.GetCamera().UnProject(Point2D{X: 150, Y: 150}, 20, w.GetWidth(), w.GetHeight())
+		orientationObject.Position = w.GetCamera().UnProject(Point2D{X: 60, Y: 120}, 20, w.GetWidth(), w.GetHeight())
 	})
 	w.AddObject(&orientationObject)
 	return &orientationObject
