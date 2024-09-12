@@ -32,8 +32,8 @@ func (rotation *Rotation3D) Minus() Rotation3D {
 	return Rotation3D{-rotation.X, -rotation.Y, -rotation.Z}
 }
 
-// CreateRotationMatrix creates a rotation matrix from the rotation
-func (rotation *Rotation3D) CreateRotationMatrix() RotationMatrix {
+// ToRotationMatrix creates a rotation matrix from the rotation
+func (rotation *Rotation3D) ToRotationMatrix() RotationMatrix {
 	rx := float64(rotation.X.ToRadians())
 	ry := float64(rotation.Y.ToRadians())
 	rz := float64(rotation.Z.ToRadians())
@@ -68,12 +68,19 @@ func (rotation *Rotation3D) Add(other Rotation3D) {
 }
 
 func (rotation *Rotation3D) ToDirectionVector() Point3D {
-	rotationMatrix := rotation.CreateRotationMatrix()
+	rotationMatrix := rotation.ToRotationMatrix()
 	return Point3D{
 		X: Unit(rotationMatrix[0][2]),
 		Y: Unit(rotationMatrix[1][2]),
 		Z: Unit(rotationMatrix[2][2]),
 	}
+}
+
+// Normalize normalizes the rotation to be within 0-360 degrees
+func (rotation *Rotation3D) Normalize() {
+	rotation.X = Degrees(math.Mod(float64(rotation.X), 360))
+	rotation.Y = Degrees(math.Mod(float64(rotation.Y), 360))
+	rotation.Z = Degrees(math.Mod(float64(rotation.Z), 360))
 }
 
 // RotationMatrix represents a 3x3 rotation matrix
@@ -95,6 +102,28 @@ func (rotationMatrix *RotationMatrix) Transpose() RotationMatrix {
 		{rotationMatrix[0][1], rotationMatrix[1][1], rotationMatrix[2][1]},
 		{rotationMatrix[0][2], rotationMatrix[1][2], rotationMatrix[2][2]},
 	}
+}
+
+// Multiply multiplies the rotation matrix with another rotation matrix
+func (rotationMatrix *RotationMatrix) Multiply(other RotationMatrix) RotationMatrix {
+	result := RotationMatrix{}
+	for i := 0; i < 3; i++ {
+		for j := 0; j < 3; j++ {
+			for k := 0; k < 3; k++ {
+				result[i][j] += rotationMatrix[i][k] * other[k][j]
+			}
+		}
+	}
+	return result
+}
+
+// ToRotation3D converts the rotation matrix to a Rotation3D
+func (rotationMatrix *RotationMatrix) ToRotation3D() Rotation3D {
+	rotation := Rotation3D{}
+	rotation.X = Degrees(math.Asin(rotationMatrix[1][2]))
+	rotation.Y = Degrees(math.Atan2(rotationMatrix[0][2], rotationMatrix[2][2]))
+	rotation.Z = Degrees(math.Atan2(rotationMatrix[1][0], rotationMatrix[1][1]))
+	return rotation
 }
 
 // Unit is the unit for distance in 3D space
@@ -186,6 +215,23 @@ func (point *Point3D) Normalize() {
 	point.X /= magnitude
 	point.Y /= magnitude
 	point.Z /= magnitude
+}
+
+func (point *Point3D) ToRotation() Rotation3D {
+	rotation := Rotation3D{
+		X: Degrees(math.Asin(float64(point.Y))),
+		Y: Degrees(math.Atan2(float64(point.X), float64(point.Z))),
+	}
+	return rotation
+}
+
+// Cross returns the cross product of the point with another point
+func (point *Point3D) Cross(other Point3D) Point3D {
+	return Point3D{
+		X: point.Y*other.Z - point.Z*other.Y,
+		Y: point.Z*other.X - point.X*other.Z,
+		Z: point.X*other.Y - point.Y*other.X,
+	}
 }
 
 // Point2D represents a point in 2D space
@@ -303,16 +349,17 @@ func (camera *Camera) Project(point Point3D) Point2D {
 // UnProject un-projects a 2D point on the screen to a 3D point in world space
 func (camera *Camera) UnProject(point2d Point2D, distance Unit) Point3D {
 	fovRadians := camera.Fov.ToRadians()
-	scale := Unit(math.Tan(float64(fovRadians)/2) * float64(distance))
+	halfWidth := float64(Width) / 2
+	halfHeight := float64(Height) / 2
+	scale := math.Tan(float64(fovRadians)/2) * float64(distance)
 
 	pointInCameraSpace := Point3D{
-		X: Unit((float64(point2d.X)-float64(Width)/2)/(float64(Width)/2)) * scale,
-		Y: Unit((float64(point2d.Y)-float64(Height)/2)/(float64(Height)/2)) * scale,
+		X: Unit((float64(point2d.X) - halfWidth) / halfWidth * scale),
+		Y: Unit((float64(point2d.Y) - halfHeight) / halfHeight * scale),
 		Z: -distance,
 	}
 
-	rotationMatrix := camera.Rotation.CreateRotationMatrix()
-
+	rotationMatrix := camera.Rotation.ToRotationMatrix()
 	pointInWorldSpace := rotationMatrix.ApplyInverseRotationMatrix(pointInCameraSpace)
 	pointInWorldSpace.Add(camera.Position)
 

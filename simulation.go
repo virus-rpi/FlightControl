@@ -18,7 +18,6 @@ func simulationTab() fyne.CanvasObject {
 	camera := ThreeDView.NewCamera(ThreeDView.Point3D{Y: 500, Z: 200}, ThreeDView.Rotation3D{})
 	orbitController := ThreeDView.NewOrbitController(ThreeDView.Point3D{X: 0, Y: 0, Z: 100})
 	camera.SetController(orbitController)
-	// orbitController.PointAtTarget()
 	threeDEnv.SetCamera(&camera)
 
 	return threeDEnv

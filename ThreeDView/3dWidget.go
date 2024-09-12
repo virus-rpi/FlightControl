@@ -72,7 +72,7 @@ func (w *ThreeDWidget) renderLoop() {
 		frameDuration := time.Second / time.Duration(w.fpsCap)
 
 		w.image.Image = w.render()
-		canvas.Refresh(w.image)
+		go canvas.Refresh(w.image)
 
 		elapsedTime := time.Since(startTime)
 		if elapsedTime < frameDuration {

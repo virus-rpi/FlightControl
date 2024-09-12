@@ -5,14 +5,17 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"log"
+	"math"
 	"time"
 )
 
+// OrbitController is a controller that allows the camera to orbit around a target
 type OrbitController struct {
 	BaseController
-	target   Point3D
-	rotation Rotation3D
-	distance Unit
+	target   Point3D    // The point the camera is orbiting around in world space
+	rotation Rotation3D // The rotation of the camera around the target in world space in degrees from the perspective of the target
+	distance Unit       // The distance of the camera from the target
 }
 
 func NewOrbitController(orbitCenter Point3D) *OrbitController {
@@ -29,17 +32,37 @@ func (controller *OrbitController) Move(distance Unit) {
 }
 
 func (controller *OrbitController) PointAtTarget() {
-	// TODO: Point the camera at the target
+	controller.camera.Rotation = controller.rotation
 }
 
 func (controller *OrbitController) Rotate(rotation Rotation3D) {
 	controller.rotation.Add(rotation)
+	controller.rotation.Normalize()
 	controller.updatePosition()
 }
 
 func (controller *OrbitController) onDrag(x, y float32) {
-	// TODO: Translate 2D drag to 2D rotation to 3D rotation
-	controller.Rotate(Rotation3D{X: Degrees(y / 20), Y: Degrees(x / 20)})
+	// TODO: drag x: always rotate around the GLOBAL z axis
+	// TODO: drag y: rotate around the GLOBAL x and y axis based on the GLOBAL y axis and resulting percentage of x and y on how much they contribute to the rotation in the direction up/down in the viewport
+	log.Println("drag", x, y)
+	upward := Point3D{X: 0, Y: 1, Z: 0}
+	upward.Normalize()
+
+	totalUpward := math.Abs(float64(upward.X)) + math.Abs(float64(upward.Y))
+	percentUpwardX := math.Abs(float64(upward.X)) / totalUpward
+	percentUpwardY := math.Abs(float64(upward.Y)) / totalUpward
+
+	log.Println("u", percentUpwardX, percentUpwardY)
+
+	rotation := Rotation3D{
+		X: Degrees(float64(y) * percentUpwardX),
+		Y: Degrees(float64(y) * percentUpwardY),
+		Z: Degrees(x),
+	}
+
+	log.Println(rotation, controller.rotation)
+
+	controller.Rotate(rotation)
 }
 
 func (controller *OrbitController) onDragEnd() {}
@@ -55,6 +78,8 @@ func (controller *OrbitController) updatePosition() {
 	controller.camera.Position.X = controller.target.X + controller.distance*direction.X
 	controller.camera.Position.Y = controller.target.Y + controller.distance*direction.Y
 	controller.camera.Position.Z = controller.target.Z + controller.distance*direction.Z
+
+	controller.PointAtTarget()
 }
 
 type ManualController struct {
