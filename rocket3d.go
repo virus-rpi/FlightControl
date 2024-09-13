@@ -7,21 +7,27 @@ import (
 	"time"
 )
 
+const (
+	tipHeight   = types.Unit(30)
+	stageHeight = types.Unit(60)
+	radius      = types.Unit(10)
+)
+
 type Rocket struct {
-	objects   []*object.Object
-	Data      Data
-	rotation  types.Rotation3D
-	position  types.Point3D
-	seperated bool
+	objects     []*object.Object
+	rotation    types.Rotation3D
+	position    types.Point3D
+	seperated   bool
+	DataChannel chan Data
 }
 
 func NewTwoStageRocket(position types.Point3D, rotation types.Rotation3D, w object.ThreeDWidgetInterface) *Rocket {
 	rocket := Rocket{
-		objects:   make([]*object.Object, 3),
-		Data:      Data{},
-		rotation:  rotation,
-		position:  position,
-		seperated: false,
+		objects:     make([]*object.Object, 3),
+		rotation:    rotation,
+		position:    position,
+		seperated:   false,
+		DataChannel: make(chan Data),
 	}
 	rocket.position.Z += 180
 
@@ -30,12 +36,12 @@ func NewTwoStageRocket(position types.Point3D, rotation types.Rotation3D, w obje
 		rocket.rotation,
 		color.RGBA{R: 200, G: 200, B: 200, A: 255},
 		w,
-		types.Unit(30),
-		types.Unit(10),
+		tipHeight,
+		radius,
 	)
 
 	stage1 := object.NewCylinder(
-		types.Point3D{X: rocket.position.X, Y: rocket.position.Y, Z: rocket.position.Z - 45},
+		types.Point3D{X: rocket.position.X, Y: rocket.position.Y, Z: rocket.position.Z - tipHeight*1.5},
 		rocket.rotation,
 		color.RGBA{R: 150, G: 150, B: 150, A: 255},
 		w,
@@ -44,7 +50,7 @@ func NewTwoStageRocket(position types.Point3D, rotation types.Rotation3D, w obje
 	)
 
 	stage2 := object.NewCylinder(
-		types.Point3D{X: rocket.position.X, Y: rocket.position.Y, Z: rocket.position.Z - 105},
+		types.Point3D{X: rocket.position.X, Y: rocket.position.Y, Z: rocket.position.Z - tipHeight*1.5 - stageHeight},
 		rocket.rotation,
 		color.RGBA{R: 100, G: 100, B: 100, A: 255},
 		w,
@@ -55,6 +61,8 @@ func NewTwoStageRocket(position types.Point3D, rotation types.Rotation3D, w obje
 	rocket.objects[0] = tip
 	rocket.objects[1] = stage1
 	rocket.objects[2] = stage2
+
+	go rocket.listenForData()
 
 	return &rocket
 }
@@ -67,6 +75,21 @@ func (rocket *Rocket) Move(position types.Point3D) {
 	rocket.position.Add(position)
 	for _, obj := range rocket.objects {
 		obj.Position.Add(position)
+	}
+}
+
+func (rocket *Rocket) SetPosition(position types.Point3D) {
+	rocket.position = position
+	rocket.objects[0].Position = rocket.position
+	rocket.objects[1].Position = types.Point3D{X: rocket.position.X, Y: rocket.position.Y, Z: rocket.position.Z - tipHeight*1.5}
+	rocket.objects[2].Position = types.Point3D{X: rocket.position.X, Y: rocket.position.Y, Z: rocket.position.Z - tipHeight*1.5 - stageHeight}
+}
+
+func (rocket *Rocket) SetRotation(rotation types.Rotation3D) {
+	rocket.rotation = rotation
+	for _, obj := range rocket.objects {
+		obj.Rotation = rotation
+		obj.Position.Rotate(rocket.position, rotation)
 	}
 }
 
@@ -89,4 +112,11 @@ func (rocket *Rocket) SeparateStage() {
 		seperatedStage.Rotation.X = 90
 		seperatedStage.Position.Z = 15
 	}()
+}
+
+func (rocket *Rocket) listenForData() {
+	for data := range rocket.DataChannel {
+		rocket.SetPosition(types.Point3D{X: rocket.position.X, Y: rocket.position.Y, Z: types.Unit(data.altitude) * 100})
+		rocket.SetRotation(types.Rotation3D{X: types.Degrees(data.xRotation), Y: types.Degrees(data.yRotation), Z: types.Degrees(data.zRotation)})
+	}
 }

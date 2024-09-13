@@ -56,22 +56,31 @@ func NewThreeDWidget() *ThreeDWidget {
 
 func (w *ThreeDWidget) tickLoop() {
 	for {
+		if w.tpsCap == 0 || !w.Visible() {
+			continue
+		}
 		startTime := time.Now()
 		tickDuration := time.Second / time.Duration(w.tpsCap)
 
 		for _, tickMethod := range w.tickMethods {
-			go tickMethod()
+			tickMethod()
 		}
 
 		elapsedTime := time.Since(startTime)
 		if elapsedTime < tickDuration {
 			time.Sleep(tickDuration - elapsedTime)
 		}
+		if elapsedTime > tickDuration && tickDuration != 0 {
+			log.Println("WARNING: Tick took too long to execute (", elapsedTime, " > ", tickDuration, ")")
+		}
 	}
 }
 
 func (w *ThreeDWidget) renderLoop() {
 	for {
+		if w.fpsCap == 0 || !w.Visible() {
+			continue
+		}
 		frameStartTime := time.Now()
 		frameDuration := time.Second / time.Duration(w.fpsCap)
 

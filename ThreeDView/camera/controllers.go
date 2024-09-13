@@ -16,14 +16,16 @@ type ObjectInterface interface {
 // OrbitController is a controller that allows the camera to orbit around a target Object
 type OrbitController struct {
 	BaseController
-	target   ObjectInterface // The Object the camera is orbiting around in world space
-	rotation Rotation3D      // The rotation of the camera around the target in world space in degrees from the perspective of the target
-	distance Unit            // The distance of the camera from the target
+	target          ObjectInterface // The Object the camera is orbiting around in world space
+	rotation        Rotation3D      // The rotation of the camera around the target in world space in degrees from the perspective of the target
+	distance        Unit            // The distance of the camera from the target
+	controlsEnabled bool            // Whether the controls are enabled (dragging, scrolling)
+	offset          Point3D         // The offset of the camera from the target
 }
 
 // NewOrbitController creates a new OrbitController with the target Object
 func NewOrbitController(target ObjectInterface) *OrbitController {
-	return &OrbitController{target: target, distance: 500, rotation: Rotation3D{Y: 300}}
+	return &OrbitController{target: target, distance: 500, rotation: Rotation3D{Y: 300}, controlsEnabled: true, offset: Point3D{}}
 }
 
 func (controller *OrbitController) setCamera(camera *Camera) {
@@ -31,9 +33,26 @@ func (controller *OrbitController) setCamera(camera *Camera) {
 	controller.Update()
 }
 
+// SetOffset sets the offset of the camera from the target Object
+func (controller *OrbitController) SetOffset(offset Point3D) {
+	controller.offset = offset
+	controller.Update()
+}
+
+// SetControlsEnabled sets whether the controls are enabled
+func (controller *OrbitController) SetControlsEnabled(enabled bool) {
+	controller.controlsEnabled = enabled
+}
+
 // SetTarget sets the target Object for the camera to orbit around
 func (controller *OrbitController) SetTarget(target ObjectInterface) {
 	controller.target = target
+	controller.Update()
+}
+
+// SetDistance sets the distance of the camera from the target Object
+func (controller *OrbitController) SetDistance(distance Unit) {
+	controller.distance = distance
 	controller.Update()
 }
 
@@ -50,8 +69,18 @@ func (controller *OrbitController) Rotate(rotation Rotation3D) {
 	controller.Update()
 }
 
+// SetRotation sets the rotation of the camera around the target Object
+func (controller *OrbitController) SetRotation(rotation Rotation3D) {
+	controller.rotation = rotation
+	controller.rotation.Normalize()
+	controller.Update()
+}
+
 // OnDrag is called when the user drags the camera. DO NOT CALL THIS FUNCTION MANUALLY
 func (controller *OrbitController) OnDrag(x, y float32) {
+	if !controller.controlsEnabled {
+		return
+	}
 	controller.Rotate(Rotation3D{Y: Degrees(-y), Z: Degrees(x)})
 }
 
@@ -60,6 +89,9 @@ func (controller *OrbitController) OnDragEnd() {}
 
 // OnScroll is called when the user scrolls the camera. DO NOT CALL THIS FUNCTION MANUALLY
 func (controller *OrbitController) OnScroll(_, y float32) {
+	if !controller.controlsEnabled {
+		return
+	}
 	controller.Move(Unit(y))
 }
 
@@ -70,14 +102,23 @@ func (controller *OrbitController) Update() {
 }
 
 func (controller *OrbitController) updatePosition() {
+	if controller.camera == nil {
+		return
+	}
 	newPosition := controller.target.GetPosition()
+	newPosition.Add(controller.offset)
 	newPosition.Add(Point3D{X: controller.distance})
 	newPosition.Rotate(controller.target.GetPosition(), controller.rotation)
 	controller.camera.Position = newPosition
 }
 
 func (controller *OrbitController) pointAtTarget() {
-	direction := DirectionVector{Point3D: controller.target.GetPosition()}
+	if controller.camera == nil {
+		return
+	}
+	targetPosition := controller.target.GetPosition()
+	targetPosition.Add(controller.offset)
+	direction := DirectionVector{Point3D: targetPosition}
 	direction.Subtract(controller.camera.Position)
 	direction.Normalize()
 	rotation := direction.ToRotation()

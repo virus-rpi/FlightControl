@@ -47,7 +47,9 @@ func initWebsocket(App fyne.App) {
 			}
 			log.Printf("Received: %s\n", msg)
 
+			var newestData Data
 			parseCSVData(msg, &newestData)
+			ps.Pub(newestData, "newData")
 
 			updateVoltage(newestData.voltage)
 			updateStatus(string(newestData.status))

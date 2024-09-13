@@ -1,5 +1,7 @@
 package main
 
-var newestData Data
+import "github.com/cskr/pubsub"
+
+var ps = pubsub.New(0)
 
 var currentLog Log

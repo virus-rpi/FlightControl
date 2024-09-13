@@ -13,8 +13,9 @@ import (
 
 func simulationTab() fyne.CanvasObject {
 	threeDEnv := ThreeDView.NewThreeDWidget()
+	threeDEnv.Hide()
 	threeDEnv.SetBackgroundColor(color.RGBA{R: 135, G: 206, B: 235, A: 255})
-	threeDEnv.SetTPSCap(600)
+	threeDEnv.SetTPSCap(1600)
 	if fyne.CurrentDevice().IsMobile() {
 		threeDEnv.SetFPSCap(30)
 		object.NewPlane(1000, types.Point3D{X: 0, Y: 0, Z: 0}, types.Rotation3D{X: 0, Y: 0, Z: 0}, color.RGBA{G: 255, A: 255}, threeDEnv, 4)
@@ -39,6 +40,18 @@ func simulationTab() fyne.CanvasObject {
 	})
 	separateButton.Resize(fyne.NewSize(100, 50))
 	buttonContainer := container.NewVBox(separateButton)
+
+	go func() {
+		selectedTabChannel := ps.Sub("selectedTab")
+		for selectedTab := range selectedTabChannel {
+			selectedTab := selectedTab.(*container.TabItem)
+			if selectedTab.Text == "Simulation" {
+				threeDEnv.Show()
+			} else {
+				threeDEnv.Hide()
+			}
+		}
+	}()
 
 	return container.NewBorder(nil, buttonContainer, nil, nil, container.NewStack(threeDEnv))
 }

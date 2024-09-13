@@ -24,6 +24,10 @@ func main() {
 
 	tabs := container.NewAppTabs(tabControl, tabAnalysis, tabSimulation, tabSetting, tabChecklists)
 
+	tabs.OnSelected = func(item *container.TabItem) {
+		ps.Pub(item, "selectedTab")
+	}
+
 	mainMenu := fyne.NewMainMenu(
 		fyne.NewMenu("File",
 			fyne.NewMenuItem("Load log", func() { println("Load log") }),
@@ -52,4 +56,5 @@ func main() {
 	}
 	MainWindow.SetContent(tabs)
 	MainWindow.ShowAndRun()
+	defer ps.Shutdown()
 }

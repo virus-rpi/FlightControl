@@ -6,6 +6,7 @@ toolchain go1.23.0
 
 require (
 	fyne.io/fyne/v2 v2.4.4
+	github.com/cskr/pubsub v1.0.2
 	golang.org/x/net v0.29.0
 )
 
