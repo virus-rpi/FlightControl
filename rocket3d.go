@@ -67,8 +67,23 @@ func NewTwoStageRocket(position types.Point3D, rotation types.Rotation3D, w obje
 	return &rocket
 }
 
-func (rocket *Rocket) GetPosition() types.Point3D {
+func (rocket *Rocket) GetSensorPosition() types.Point3D {
 	return rocket.position
+}
+
+func (rocket *Rocket) GetPosition() types.Point3D {
+	sensorPosition := rocket.position
+	if rocket.seperated {
+		sensorPosition.Z -= (stageHeight) / 2
+	} else {
+		sensorPosition.Z -= (stageHeight * 2) / 2
+	}
+	sensorPosition.Rotate(rocket.position, rocket.rotation)
+	return sensorPosition
+}
+
+func (rocket *Rocket) GetRotation() types.Rotation3D {
+	return rocket.rotation
 }
 
 func (rocket *Rocket) Move(position types.Point3D) {
@@ -118,5 +133,8 @@ func (rocket *Rocket) listenForData() {
 	for data := range rocket.DataChannel {
 		rocket.SetPosition(types.Point3D{X: rocket.position.X, Y: rocket.position.Y, Z: types.Unit(data.altitude) * 100})
 		rocket.SetRotation(types.Rotation3D{X: types.Degrees(data.xRotation), Y: types.Degrees(data.yRotation), Z: types.Degrees(data.zRotation)})
+		if data.status.toIndex() > Status(StatusBoostedAscent).toIndex() && data.status != StatusError {
+			rocket.SeparateStage()
+		}
 	}
 }

@@ -11,41 +11,49 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var ws *websocket.Conn
 var done chan struct{}
+var netLogger = log.New(log.Writer(), "[Networking] ", log.LstdFlags)
 
 func initWebsocket(App fyne.App) {
 	wsUrl := url.URL{Scheme: "ws", Host: App.Preferences().StringWithFallback("WaRaIP", "Not set"), Path: "/websocket"}
-	log.Println("Connecting to " + wsUrl.String())
+	netLogger.Println("Connecting to " + wsUrl.String())
 
 	var err error
-	ws, err = websocket.Dial(wsUrl.String(), "", "http://localhost/")
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer func(ws *websocket.Conn) {
-		err := ws.Close()
-		if err != nil {
-			log.Println(err)
+	for {
+		ws, err = websocket.Dial(wsUrl.String(), "", "http://localhost/")
+		if err == nil {
+			break
 		}
-	}(ws)
+		netLogger.Println("WebSocket connection failed, retrying in 5 seconds...")
+		time.Sleep(5 * time.Second)
+	}
 
 	done = make(chan struct{})
 
 	go func() {
-		defer close(done)
+		defer func() {
+			close(done)
+			if err := ws.Close(); err != nil {
+				netLogger.Println("Error closing WebSocket:", err)
+			}
+		}()
 
 		for {
 			var msg string
 			err := websocket.Message.Receive(ws, &msg)
 			if err != nil {
-				log.Println(err)
+				if err == io.EOF {
+					netLogger.Println("WebSocket read error: EOF")
+				} else {
+					netLogger.Println("WebSocket read error:", err)
+				}
 				return
 			}
-			log.Printf("Received: %s\n", msg)
+			//netLogger.Printf("Received: %s\n", msg)
 
 			var newestData Data
 			parseCSVData(msg, &newestData)
@@ -63,7 +71,7 @@ func updateWebsocket(App fyne.App) {
 	if ws != nil {
 		err := ws.Close()
 		if err != nil {
-			log.Println(err)
+			netLogger.Println(err)
 			return
 		}
 	}
@@ -73,13 +81,13 @@ func updateWebsocket(App fyne.App) {
 func post(postUrl url.URL) {
 	response, err := http.Post(postUrl.String(), "application/json", nil)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			log.Println(err)
+			netLogger.Println(err)
 		}
 	}(response.Body)
 }
@@ -87,19 +95,19 @@ func post(postUrl url.URL) {
 func get(getUrl url.URL) string {
 	response, err := http.Get(getUrl.String())
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return ""
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			log.Println(err)
+			netLogger.Println(err)
 		}
 	}(response.Body)
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return ""
 	}
 
@@ -190,12 +198,12 @@ func getLogList(App fyne.App) LogList {
 		reader := csv.NewReader(strings.NewReader(line))
 		record, err := reader.Read()
 		if err != nil {
-			log.Println(err)
+			netLogger.Println(err)
 			return nil
 		}
 		id, err := strconv.Atoi(record[0])
 		if err != nil {
-			log.Println(err)
+			netLogger.Println(err)
 			return nil
 		}
 		logList[i].id = id
@@ -214,7 +222,7 @@ func getVoltage(App fyne.App) float64 {
 	voltageString := get(getVoltageUrl)
 	voltage, err := strconv.ParseFloat(voltageString, 64)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return 0
 	}
 	return voltage
@@ -230,7 +238,7 @@ func getHeight(App fyne.App) float64 {
 	heightString := get(getHeightUrl)
 	height, err := strconv.ParseFloat(heightString, 64)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return 0
 	}
 	return height
@@ -241,7 +249,7 @@ func getXAcceleration(App fyne.App) float64 {
 	xAccelerationString := get(getXAccelerationUrl)
 	xAcceleration, err := strconv.ParseFloat(xAccelerationString, 64)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return 0
 	}
 	return xAcceleration
@@ -252,7 +260,7 @@ func getYAcceleration(App fyne.App) float64 {
 	yAccelerationString := get(getYAccelerationUrl)
 	yAcceleration, err := strconv.ParseFloat(yAccelerationString, 64)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return 0
 	}
 	return yAcceleration
@@ -263,7 +271,7 @@ func getZAcceleration(App fyne.App) float64 {
 	zAccelerationString := get(getZAccelerationUrl)
 	zAcceleration, err := strconv.ParseFloat(zAccelerationString, 64)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return 0
 	}
 	return zAcceleration
@@ -274,7 +282,7 @@ func getXRotation(App fyne.App) float64 {
 	xRotationString := get(getXRotationUrl)
 	xRotation, err := strconv.ParseFloat(xRotationString, 64)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return 0
 	}
 	return xRotation
@@ -285,7 +293,7 @@ func getYRotation(App fyne.App) float64 {
 	yRotationString := get(getYRotationUrl)
 	yRotation, err := strconv.ParseFloat(yRotationString, 64)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return 0
 	}
 	return yRotation
@@ -296,7 +304,7 @@ func getZRotation(App fyne.App) float64 {
 	zRotationString := get(getZRotationUrl)
 	zRotation, err := strconv.ParseFloat(zRotationString, 64)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return 0
 	}
 	return zRotation
@@ -308,7 +316,7 @@ func getSpacialData(App fyne.App) SpacialData {
 	var spacialData SpacialData
 	err := json.Unmarshal([]byte(spacialDataJsonString), &spacialData)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return SpacialData{}
 	}
 	return spacialData
@@ -319,7 +327,7 @@ func getMaxAltitude(App fyne.App) float64 {
 	maxAltitudeString := get(getMaxAltitudeUrl)
 	maxAltitude, err := strconv.ParseFloat(maxAltitudeString, 64)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return 0
 	}
 	return maxAltitude
@@ -330,7 +338,7 @@ func getMinAltitude(App fyne.App) float64 {
 	minAltitudeString := get(getMinAltitudeUrl)
 	minAltitude, err := strconv.ParseFloat(minAltitudeString, 64)
 	if err != nil {
-		log.Println(err)
+		netLogger.Println(err)
 		return 0
 	}
 	return minAltitude

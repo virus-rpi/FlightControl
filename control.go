@@ -159,7 +159,6 @@ func threeDVisualisation() (fyne.CanvasObject, *Rocket) {
 	orbitController := camera.NewOrbitController(rocket)
 	orbitController.SetControlsEnabled(false)
 	orbitController.SetRotation(types.Rotation3D{X: 0, Y: 0, Z: 0})
-	orbitController.SetOffset(types.Point3D{X: 0, Y: 0, Z: -55})
 	envCamera.SetController(orbitController)
 	threeDEnv.SetCamera(&envCamera)
 

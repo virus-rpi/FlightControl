@@ -46,6 +46,31 @@ func toStatus(indexStr string) Status {
 	}
 }
 
+func (s Status) toIndex() int {
+	switch s {
+	case StatusIdle:
+		return 0
+	case StatusArmed:
+		return 1
+	case StatusBoostedAscent:
+		return 2
+	case StatusPoweredAscent:
+		return 3
+	case StatusUnpoweredAscent:
+		return 4
+	case StatusDescent:
+		return 5
+	case StatusParachuteDescent:
+		return 6
+	case StatusLanded:
+		return 7
+	case StatusError:
+		return 8
+	default:
+		return 8
+	}
+}
+
 const (
 	LoggingStatusIdle    = "idle"
 	LoggingStatusLogging = "logging"

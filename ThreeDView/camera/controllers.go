@@ -20,22 +20,15 @@ type OrbitController struct {
 	rotation        Rotation3D      // The rotation of the camera around the target in world space in degrees from the perspective of the target
 	distance        Unit            // The distance of the camera from the target
 	controlsEnabled bool            // Whether the controls are enabled (dragging, scrolling)
-	offset          Point3D         // The offset of the camera from the target
 }
 
 // NewOrbitController creates a new OrbitController with the target Object
 func NewOrbitController(target ObjectInterface) *OrbitController {
-	return &OrbitController{target: target, distance: 500, rotation: Rotation3D{Y: 300}, controlsEnabled: true, offset: Point3D{}}
+	return &OrbitController{target: target, distance: 500, rotation: Rotation3D{Y: 300}, controlsEnabled: true}
 }
 
 func (controller *OrbitController) setCamera(camera *Camera) {
 	controller.BaseController.camera = camera
-	controller.Update()
-}
-
-// SetOffset sets the offset of the camera from the target Object
-func (controller *OrbitController) SetOffset(offset Point3D) {
-	controller.offset = offset
 	controller.Update()
 }
 
@@ -106,7 +99,6 @@ func (controller *OrbitController) updatePosition() {
 		return
 	}
 	newPosition := controller.target.GetPosition()
-	newPosition.Add(controller.offset)
 	newPosition.Add(Point3D{X: controller.distance})
 	newPosition.Rotate(controller.target.GetPosition(), controller.rotation)
 	controller.camera.Position = newPosition
@@ -117,7 +109,6 @@ func (controller *OrbitController) pointAtTarget() {
 		return
 	}
 	targetPosition := controller.target.GetPosition()
-	targetPosition.Add(controller.offset)
 	direction := DirectionVector{Point3D: targetPosition}
 	direction.Subtract(controller.camera.Position)
 	direction.Normalize()

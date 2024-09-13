@@ -21,8 +21,9 @@ func main() {
 	tabSimulation := container.NewTabItem("Simulation", simulationTab())
 	tabSetting := container.NewTabItem("Settings", widget.NewLabel("Content of Tab 4"))
 	tabChecklists := container.NewTabItem("Checklists", widget.NewLabel("Content of Tab 5"))
+	tabMock := container.NewTabItem("Mock", mockTab())
 
-	tabs := container.NewAppTabs(tabControl, tabAnalysis, tabSimulation, tabSetting, tabChecklists)
+	tabs := container.NewAppTabs(tabControl, tabAnalysis, tabSimulation, tabSetting, tabChecklists, tabMock)
 
 	tabs.OnSelected = func(item *container.TabItem) {
 		ps.Pub(item, "selectedTab")

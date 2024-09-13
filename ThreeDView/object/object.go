@@ -58,3 +58,7 @@ func (object *Object) GetFaces() []FaceData {
 func (object *Object) GetPosition() Point3D {
 	return object.Position
 }
+
+func (object *Object) GetRotation() Rotation3D {
+	return object.Rotation
+}
