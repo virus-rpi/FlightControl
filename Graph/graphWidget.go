@@ -42,6 +42,7 @@ func NewGraphWidget() *Widget {
 	w.Plot.X.Tick.Label.Color = color.White
 
 	w.resetButton = widget.NewButton("Reset axis", w.resetAxis)
+
 	w.image = canvas.NewImageFromImage(w.render())
 	w.resetAxis()
 	return w
@@ -143,9 +144,13 @@ func (gr *graphRenderer) Destroy() {}
 
 func (gr *graphRenderer) Layout(size fyne.Size) {
 	gr.graphWidget.Resize(size)
-	gr.graphWidget.resetButton.Resize(fyne.NewSize(70, 30))
+	if fyne.CurrentDevice().IsMobile() {
+		gr.graphWidget.resetButton.Resize(fyne.NewSize(130, 40))
+	} else {
+		gr.graphWidget.resetButton.Resize(fyne.NewSize(70, 30))
+	}
 	gr.image.Resize(fyne.NewSize(size.Width, size.Height-gr.graphWidget.resetButton.Size().Height))
-	gr.graphWidget.resetButton.Move(fyne.NewPos(size.Width-gr.graphWidget.resetButton.Size().Width, size.Height-gr.graphWidget.resetButton.Size().Height))
+	gr.graphWidget.resetButton.Move(fyne.NewPos(size.Width-gr.graphWidget.resetButton.Size().Width-5, size.Height-gr.graphWidget.resetButton.Size().Height))
 	gr.Refresh()
 }
 
