@@ -17,7 +17,7 @@ func main() {
 	MainWindow.CenterOnScreen()
 
 	tabControl := container.NewTabItem("Control", controlTab(App, MainWindow))
-	tabAnalysis := container.NewTabItem("Analysis", widget.NewLabel("Content of Tab 2"))
+	tabAnalysis := container.NewTabItem("Analysis", analysisTab())
 	tabSimulation := container.NewTabItem("Simulation", simulationTab())
 	tabSetting := container.NewTabItem("Settings", widget.NewLabel("Content of Tab 4"))
 	tabChecklists := container.NewTabItem("Checklists", widget.NewLabel("Content of Tab 5"))
