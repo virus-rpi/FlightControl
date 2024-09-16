@@ -14,12 +14,13 @@ import (
 
 type Widget struct {
 	widget.BaseWidget
+	MinWidgetSize    fyne.Size
 	image            *canvas.Image
 	Plot             *plot.Plot
-	XMin             float64
-	XMax             float64
-	YMin             float64
-	YMax             float64
+	PlotXMin         float64
+	PlotXMax         float64
+	PlotYMin         float64
+	PlotYMax         float64
 	scale            float64
 	currentSelection [4]float64
 	resetButton      *widget.Button
@@ -29,6 +30,17 @@ func NewGraphWidget() *Widget {
 	w := &Widget{}
 	w.ExtendBaseWidget(w)
 	w.Plot = plot.New()
+
+	w.Plot.BackgroundColor = color.RGBA{R: 20, G: 20, B: 20}
+	w.Plot.X.Color = color.White
+	w.Plot.Y.Color = color.White
+	w.Plot.X.Label.TextStyle.Color = color.White
+	w.Plot.Y.Label.TextStyle.Color = color.White
+	w.Plot.X.Tick.LineStyle.Color = color.White
+	w.Plot.Y.Tick.LineStyle.Color = color.White
+	w.Plot.Y.Tick.Label.Color = color.White
+	w.Plot.X.Tick.Label.Color = color.White
+
 	w.resetButton = widget.NewButton("Reset axis", w.resetAxis)
 	w.image = canvas.NewImageFromImage(w.render())
 	w.resetAxis()
@@ -36,11 +48,15 @@ func NewGraphWidget() *Widget {
 }
 
 func (w *Widget) SetMaxBounds(xMin, xMax, yMin, yMax float64) {
-	w.XMin = xMin
-	w.XMax = xMax
-	w.YMin = yMin
-	w.YMax = yMax
+	w.PlotXMin = xMin
+	w.PlotXMax = xMax
+	w.PlotYMin = yMin
+	w.PlotYMax = yMax
 	w.resetAxis()
+}
+
+func (w *Widget) SetMinWidgetSize(size fyne.Size) {
+	w.MinWidgetSize = size
 }
 
 func (w *Widget) render() image.Image {
@@ -55,7 +71,7 @@ func (w *Widget) render() image.Image {
 			Max: vg.Point{X: vg.Length(w.pixelToDotsX(w.currentSelection[2])), Y: vg.Length(w.pixelToDotsY(w.currentSelection[3]))},
 		}
 
-		c.SetColor(color.NRGBA{R: 173, G: 216, B: 230, A: 204})
+		c.SetColor(color.NRGBA{R: 173, G: 216, B: 230, A: 150})
 		c.Fill(rect.Path())
 	}
 
@@ -72,10 +88,10 @@ func (w *Widget) pixelToDotsY(y float64) float64 {
 }
 
 func (w *Widget) resetAxis() {
-	w.Plot.X.Min = w.XMin
-	w.Plot.X.Max = w.XMax
-	w.Plot.Y.Min = w.YMin
-	w.Plot.Y.Max = w.YMax
+	w.Plot.X.Min = w.PlotXMin
+	w.Plot.X.Max = w.PlotXMax
+	w.Plot.Y.Min = w.PlotYMin
+	w.Plot.Y.Max = w.PlotYMax
 	w.Refresh()
 }
 
@@ -127,13 +143,18 @@ func (gr *graphRenderer) Destroy() {}
 
 func (gr *graphRenderer) Layout(size fyne.Size) {
 	gr.graphWidget.Resize(size)
-	gr.graphWidget.resetButton.Resize(fyne.NewSize(100, 40))
+	gr.graphWidget.resetButton.Resize(fyne.NewSize(70, 30))
 	gr.image.Resize(fyne.NewSize(size.Width, size.Height-gr.graphWidget.resetButton.Size().Height))
 	gr.graphWidget.resetButton.Move(fyne.NewPos(size.Width-gr.graphWidget.resetButton.Size().Width, size.Height-gr.graphWidget.resetButton.Size().Height))
 	gr.Refresh()
 }
 
-func (gr *graphRenderer) MinSize() fyne.Size { return fyne.NewSize(100, 100) }
+func (gr *graphRenderer) MinSize() fyne.Size {
+	if gr.graphWidget.MinWidgetSize != (fyne.Size{}) {
+		return gr.graphWidget.MinWidgetSize
+	}
+	return fyne.NewSize(100, 150)
+}
 
 func (gr *graphRenderer) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{gr.image, gr.graphWidget.resetButton}
