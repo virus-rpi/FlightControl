@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package main;
 
-option go_package = "./warp";
-
 // Types:
 enum Status { // Status of the rocket
   ROCKET_IDLE = 0;
@@ -112,10 +110,6 @@ message GoalPressureRequest { // Goal pressure request
   float goalPressure = 1; // Goal pressure in Pa
 }
 
-message SetControlServiceAddressRequest { // Set control service address request
-  string address = 1; // Address of the control service
-}
-
 
 // Services:
 service WaterRocketService {
@@ -153,8 +147,6 @@ service WaterRocketService {
   rpc ResetBarometer(Empty) returns (AcknowledgedResponse);
   rpc ResetMagnetometer(Empty) returns (AcknowledgedResponse);
   rpc ResetGPS(Empty) returns (AcknowledgedResponse);
-
-  rpc SetControlServiceAddress(SetControlServiceAddressRequest) returns (AcknowledgedResponse);
 }
 
 service ControlService {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"FlightControl/warp"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -12,8 +11,7 @@ import (
 func main() {
 	App := app.NewWithID("com.virusrpi.flightcontrol")
 	App.Settings().SetTheme(&FlightControlTheme{})
-	go warp.InitRocketClient(App, ps)
-	go listenToNewData()
+	go func() { initWebsocket(App) }()
 	MainWindow := App.NewWindow("Flight Control")
 	MainWindow.Resize(fyne.NewSize(800, 600))
 	MainWindow.CenterOnScreen()
@@ -44,8 +42,8 @@ func main() {
 					if !ok {
 						return
 					}
-					App.Preferences().SetString("RocketAddress", ipEntry.Text)
-					go warp.RefreshRocketClient(App)
+					App.Preferences().SetString("WaRaIP", ipEntry.Text)
+					updateWebsocket(App)
 				}, MainWindow)
 			}),
 		),

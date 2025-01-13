@@ -3,11 +3,6 @@ Acronym: ***Wa***ter ***R***ocket ***P***rotocol
 
 This is a description of the protocol used by the Water-Rocket to communicate with the ground station.
 
-To generate the go code from the protocol definition, run the following command:
-```bash
-protoc --go_out=. --go-grpc_out=. warp.proto
-```
-
 The Water-Rocket uses gRPC to communicate with the ground station and the controller. 
 
 ## Service Definitions
@@ -51,7 +46,6 @@ The `WaterRocketService` service provides the following methods:
 - `ResetBarometer` - Reset the barometer
 - `ResetMagnetometer` - Reset the magnetometer
 - `ResetGPS` - Reset the GPS
-- `SetControlServiceAddress` - Set the address of the Control Service
 
 The `ControlService` service provides the following methods:
 
@@ -130,4 +124,3 @@ The following message types are used:
 - `BaseStationStatusResponse` - A message that contains the status of the Base Station as `BaseStationStatus`
 - `PressureResponse` - A message that contains the pressure of the Base Station as `float`
 - `GoalPressureRequest` - A message that contains the new goal pressure of the Base Station as `float`
-- `SetControlServiceAddressRequest` - A message that contains the address of the Control Service as `string`
