@@ -4,6 +4,7 @@ import (
 	"FlightControl/ThreeDView"
 	"FlightControl/ThreeDView/camera"
 	"FlightControl/ThreeDView/types"
+	"FlightControl/warp"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -35,32 +36,32 @@ func updateMaxHeight(maxHeight float64) {
 }
 
 func controlTab(App fyne.App, MainWindow fyne.Window) fyne.CanvasObject {
-	ipLabel := widget.NewLabel("WaRa IP: " + App.Preferences().StringWithFallback("WaRaIP", "Not set"))
+	ipLabel := widget.NewLabel("WaRa IP: " + App.Preferences().StringWithFallback("RocketAddress", "Not set"))
 	voltageLabel = widget.NewLabel("Voltage: N/A")
 	statusLabel = widget.NewLabel("Status: Not connected")
 	heightLabel = widget.NewLabel("Height: N/A")
 	maxHeightLabel = widget.NewLabel("Max height: N/A")
 
 	App.Preferences().AddChangeListener(func() {
-		ipLabel.SetText("WaRa IP: " + App.Preferences().StringWithFallback("WaRaIP", "Not set"))
+		ipLabel.SetText("WaRa IP: " + App.Preferences().StringWithFallback("RocketAddress", "Not set"))
 	})
 
 	threeDVisualisation, rocket := threeDVisualisation()
 
-	resetButton := widget.NewButton("Reset", func() { go reset(App) })
-	deployParachuteButton := widget.NewButton("Deploy parachute", func() { go deployParachute(App) })
-	deployStageButton := widget.NewButton("Deploy stage", func() { go deployStage(App) })
-	startLoggingButton := widget.NewButton("Start logging", func() { go startLogging(App) })
-	stopLoggingButton := widget.NewButton("Stop logging", func() { go stopLogging(App) })
-	recalibrateGyroButton := widget.NewButton("Recalibrate gyro", func() { go recalibrateGyro(App) })
-	recalibrateAccelerometerButton := widget.NewButton("Recalibrate accelerometer", func() { go recalibrateAccelerometer(App) })
-	recalibrateBarometerButton := widget.NewButton("Recalibrate barometer", func() { go recalibrateBarometer(App) })
-	resetMaxButton := widget.NewButton("Reset max", func() { go resetMax(App) })
-	resetMinButton := widget.NewButton("Reset min", func() { go resetMin(App) })
-	resetGyroButton := widget.NewButton("Reset gyro", func() { go resetGyro(App) })
-	resetAccelerometerButton := widget.NewButton("Reset accelerometer", func() { go resetAccelerometer(App) })
-	resetBarometerButton := widget.NewButton("Reset barometer", func() { go resetBarometer(App) })
-	getLogButton := widget.NewButton("Get log", func() { go getLog(App) })
+	resetButton := widget.NewButton("Reset", func() { go warp.Client.C.Reset(*warp.Client.Ctx, &warp.Empty{}) })
+	deployParachuteButton := widget.NewButton("Deploy parachute", func() { go warp.Client.C.DeployParachute(*warp.Client.Ctx, &warp.Empty{}) })
+	deployStageButton := widget.NewButton("Deploy stage", func() { go warp.Client.C.DeployStage(*warp.Client.Ctx, &warp.Empty{}) })
+	startLoggingButton := widget.NewButton("Start logging", func() { go warp.Client.C.LogStart(*warp.Client.Ctx, &warp.Empty{}) })
+	stopLoggingButton := widget.NewButton("Stop logging", func() { go warp.Client.C.LogStop(*warp.Client.Ctx, &warp.Empty{}) })
+	recalibrateGyroButton := widget.NewButton("Recalibrate gyro", func() { go warp.Client.C.RecalibrateGyroscope(*warp.Client.Ctx, &warp.Empty{}) })
+	recalibrateAccelerometerButton := widget.NewButton("Recalibrate accelerometer", func() { go warp.Client.C.RecalibrateAccelerometer(*warp.Client.Ctx, &warp.Empty{}) })
+	recalibrateBarometerButton := widget.NewButton("Recalibrate barometer", func() { go warp.Client.C.RecalibrateBarometer(*warp.Client.Ctx, &warp.Empty{}) })
+	resetMaxButton := widget.NewButton("Reset max", func() { go warp.Client.C.ResetMax(*warp.Client.Ctx, &warp.Empty{}) })
+	resetMinButton := widget.NewButton("Reset min", func() { go warp.Client.C.ResetMin(*warp.Client.Ctx, &warp.Empty{}) })
+	resetGyroButton := widget.NewButton("Reset gyro", func() { go warp.Client.C.ResetGyroscope(*warp.Client.Ctx, &warp.Empty{}) })
+	resetAccelerometerButton := widget.NewButton("Reset accelerometer", func() { go warp.Client.C.ResetAccelerometer(*warp.Client.Ctx, &warp.Empty{}) })
+	resetBarometerButton := widget.NewButton("Reset barometer", func() { go warp.Client.C.ResetBarometer(*warp.Client.Ctx, &warp.Empty{}) })
+	getLogButton := widget.NewButton("Get log", func() { go getLog() })
 
 	ipEditButton := widget.NewButtonWithIcon("", theme.DocumentCreateIcon(), func() {
 		ipEntry := widget.NewEntry()
@@ -71,8 +72,8 @@ func controlTab(App fyne.App, MainWindow fyne.Window) fyne.CanvasObject {
 			if !ok {
 				return
 			}
-			App.Preferences().SetString("WaRaIP", ipEntry.Text)
-			updateWebsocket(App)
+			App.Preferences().SetString("RocketAddress", ipEntry.Text)
+			go warp.RefreshRocketClient(App)
 		}, MainWindow)
 	})
 
