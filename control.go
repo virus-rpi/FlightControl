@@ -150,8 +150,10 @@ func threeDVisualisation() (fyne.CanvasObject, *Rocket) {
 	threeDEnv := ThreeDView.NewThreeDWidget()
 	if fyne.CurrentDevice().IsMobile() {
 		threeDEnv.SetFPSCap(30)
+		threeDEnv.SetResolutionFactor(0.3)
 	} else {
 		threeDEnv.SetFPSCap(60)
+		threeDEnv.SetResolutionFactor(0.5)
 	}
 
 	rocket := NewTwoStageRocket(types.Point3D{X: 0, Y: 0, Z: 0}, types.Rotation3D{X: 0, Y: 0, Z: 0}, threeDEnv)
