@@ -43,7 +43,6 @@ func NewGraphWidget() *Widget {
 	w.Plot.Y.Tick.Label.Color = color.White
 	w.Plot.X.Tick.Label.Color = color.White
 
-	w.buttons = append(w.buttons, widget.NewButton("Reset axis", w.resetAxis))
 	w.buttonContainer = container.NewHBox(w.buttons...)
 
 	w.image = canvas.NewImageFromImage(w.render())
@@ -57,6 +56,7 @@ func (w *Widget) AddTool(tool tool) *Widget {
 		tool.registerButtons()
 		w.buttonContainer.Objects = w.buttons
 	}
+	tool.Enable()
 	w.tools = append(w.tools, tool)
 	return w
 }
@@ -151,7 +151,7 @@ func (gr *graphRenderer) Layout(size fyne.Size) {
 	gr.image.Resize(fyne.NewSize(size.Width, size.Height-gr.graphWidget.buttonContainer.Size().Height))
 	gr.graphWidget.buttonContainer.Move(fyne.NewPos(0, size.Height-gr.graphWidget.buttonContainer.Size().Height))
 	for i, button := range gr.graphWidget.buttons {
-		button.Move(fyne.NewPos(float32(i)*(button.Size().Width+10), 0))
+		button.Move(fyne.NewPos(5+float32(i)*(button.Size().Width+10), 0))
 	}
 	gr.Refresh()
 }

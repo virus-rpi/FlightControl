@@ -30,6 +30,7 @@ type ToolBase struct {
 	widget  *Widget
 	active  bool
 	intents intents
+	id      string
 }
 
 func (t *ToolBase) getIntents() intents {

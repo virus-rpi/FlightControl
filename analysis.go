@@ -10,6 +10,7 @@ import (
 
 func analysisTab() fyne.CanvasObject {
 	graph1 := Graph.NewGraphWidget().
+		AddTool(Graph.NewResetAxisTool()).
 		AddTool(Graph.NewZoomTool()).
 		AddTool(Graph.NewDragTool()).
 		SetMaxBounds(0, 2, 0, 2)
@@ -22,6 +23,7 @@ func analysisTab() fyne.CanvasObject {
 	graph1.Plot.Add(grid)
 
 	graph2 := Graph.NewGraphWidget().
+		AddTool(Graph.NewResetAxisTool()).
 		AddTool(Graph.NewZoomTool()).
 		AddTool(Graph.NewDragTool()).
 		SetMaxBounds(0, 2, 0, 2)

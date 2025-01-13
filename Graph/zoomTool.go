@@ -27,16 +27,16 @@ func (z *ZoomTool) registerButtons() {
 		return
 	}
 
-	z.widget.buttons = append(z.widget.buttons, widget.NewButton("Zoom", z.onZoomSelected))
+	z.widget.buttons = append(z.widget.buttons, widget.NewButton("Zoom", z.Enable))
 }
 
-func (z *ZoomTool) onZoomSelected() {
+func (z *ZoomTool) Enable() {
 	for _, tool := range z.widget.tools {
 		if tool != z && tool.hasIntent("drag") {
 			tool.Disable()
 		}
 	}
-	z.Enable()
+	z.ToolBase.Enable()
 }
 
 func (z *ZoomTool) onDrag(ev *fyne.DragEvent) {

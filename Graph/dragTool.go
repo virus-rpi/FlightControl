@@ -22,16 +22,16 @@ func (d *DragTool) registerButtons() {
 		return
 	}
 
-	d.widget.buttons = append(d.widget.buttons, widget.NewButton("Drag", d.onDragSelected))
+	d.widget.buttons = append(d.widget.buttons, widget.NewButton("Drag", d.Enable))
 }
 
-func (d *DragTool) onDragSelected() {
+func (d *DragTool) Enable() {
 	for _, tool := range d.widget.tools {
 		if tool != d && tool.hasIntent("drag") {
 			tool.Disable()
 		}
 	}
-	d.Enable()
+	d.ToolBase.Enable()
 }
 
 func (d *DragTool) onDrag(ev *fyne.DragEvent) {
