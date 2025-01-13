@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	Width  = Pixel(800)
-	Height = Pixel(600)
+	Width            = Pixel(800)
+	Height           = Pixel(600)
+	resolutionFactor = 1.0
 )
 
 // ThreeDWidget is a widget that displays 3D objects
@@ -139,6 +140,11 @@ func (w *ThreeDWidget) SetTPSCap(tps float64) {
 	w.tpsCap = tps
 }
 
+// SetResolutionFactor sets the resolution factor of the 3D widget. This is a factor that is multiplied with the size of the widget to determine the resolution of the 3D rendering
+func (w *ThreeDWidget) SetResolutionFactor(factor float64) {
+	resolutionFactor = factor
+}
+
 // SetRenderFaceOutlines sets whether the faces should be rendered with outlines.
 // If false, only colors will be rendered. If colors are also false, nothing will be rendered.
 // If true, the faces will be rendered with black outlines or the color of the face if face colors are disabled.
@@ -239,8 +245,8 @@ type threeDRenderer struct {
 // Layout resizes the widget to the given size
 func (r *threeDRenderer) Layout(size fyne.Size) {
 	r.image.Resize(size)
-	Width = Pixel(size.Width)
-	Height = Pixel(size.Height)
+	Width = Pixel(float64(size.Width) * resolutionFactor)
+	Height = Pixel(float64(size.Height) * resolutionFactor)
 }
 
 // MinSize returns the minimum size of the widget
