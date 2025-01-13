@@ -18,7 +18,7 @@ func main() {
 
 	tabControl := container.NewTabItem("Control", controlTab(App, MainWindow))
 	tabAnalysis := container.NewTabItem("Analysis", analysisTab())
-	tabSimulation := container.NewTabItem("Simulation", simulationTab())
+	tabSimulation := container.NewTabItem("Simulation", container.NewWithoutLayout()) //simulationTab())
 	tabSetting := container.NewTabItem("Settings", widget.NewLabel("Content of Tab 4"))
 	tabChecklists := container.NewTabItem("Checklists", widget.NewLabel("Content of Tab 5"))
 	tabMock := container.NewTabItem("Mock", mockTab())
