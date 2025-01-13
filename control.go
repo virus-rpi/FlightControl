@@ -36,14 +36,14 @@ func updateMaxHeight(maxHeight float64) {
 }
 
 func controlTab(App fyne.App, MainWindow fyne.Window) fyne.CanvasObject {
-	ipLabel := widget.NewLabel("WaRa IP: " + App.Preferences().StringWithFallback("RocketAddress", "Not set"))
+	ipLabel := widget.NewLabel("WaRa IP: " + App.Preferences().StringWithFallback("WaRaIP", "Not set"))
 	voltageLabel = widget.NewLabel("Voltage: N/A")
 	statusLabel = widget.NewLabel("Status: Not connected")
 	heightLabel = widget.NewLabel("Height: N/A")
 	maxHeightLabel = widget.NewLabel("Max height: N/A")
 
 	App.Preferences().AddChangeListener(func() {
-		ipLabel.SetText("WaRa IP: " + App.Preferences().StringWithFallback("RocketAddress", "Not set"))
+		ipLabel.SetText("WaRa IP: " + App.Preferences().StringWithFallback("WaRaIP", "Not set"))
 	})
 
 	threeDVisualisation, rocket := threeDVisualisation()

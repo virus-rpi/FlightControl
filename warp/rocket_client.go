@@ -6,7 +6,6 @@ import (
 	"fyne.io/fyne/v2"
 	"github.com/cskr/pubsub"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net"
 	"time"
@@ -43,7 +42,7 @@ func InitRocketClient(App fyne.App, ps *pubsub.PubSub) {
 		return
 	}
 
-	conn, err := grpc.NewClient(rocketAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(rocketAddress)
 	if err != nil {
 		log.Fatalf("failed to connect to rocket: %v", err)
 	}
@@ -56,7 +55,7 @@ func InitRocketClient(App fyne.App, ps *pubsub.PubSub) {
 	ip, err := getLocalIP()
 	_, err = c.SetControlServiceAddress(ctx, &SetControlServiceAddressRequest{Address: ip + ":50051"})
 	if err != nil {
-		log.Printf("failed to set control service address: %v", err)
+		log.Fatalf("failed to set control service address: %v", err)
 	}
 	go NewControlServiceServer(ps)
 
@@ -71,7 +70,7 @@ func RefreshRocketClient(App fyne.App) {
 		return
 	}
 
-	conn, err := grpc.NewClient(rocketAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(rocketAddress)
 	if err != nil {
 		log.Fatalf("failed to connect to rocket: %v", err)
 	}
@@ -84,7 +83,7 @@ func RefreshRocketClient(App fyne.App) {
 	ip, err := getLocalIP()
 	_, err = c.SetControlServiceAddress(ctx, &SetControlServiceAddressRequest{Address: ip + ":50051"})
 	if err != nil {
-		log.Printf("failed to set control service address: %v", err)
+		log.Fatalf("failed to set control service address: %v", err)
 	}
 
 	Client.C = c
