@@ -50,16 +50,6 @@ func controlTab(App fyne.App, MainWindow fyne.Window) fyne.CanvasObject {
 	resetButton := widget.NewButton("Reset", func() { go reset(App) })
 	deployParachuteButton := widget.NewButton("Deploy parachute", func() { go deployParachute(App) })
 	deployStageButton := widget.NewButton("Deploy stage", func() { go deployStage(App) })
-	startLoggingButton := widget.NewButton("Start logging", func() { go startLogging(App) })
-	stopLoggingButton := widget.NewButton("Stop logging", func() { go stopLogging(App) })
-	recalibrateGyroButton := widget.NewButton("Recalibrate gyro", func() { go recalibrateGyro(App) })
-	recalibrateAccelerometerButton := widget.NewButton("Recalibrate accelerometer", func() { go recalibrateAccelerometer(App) })
-	recalibrateBarometerButton := widget.NewButton("Recalibrate barometer", func() { go recalibrateBarometer(App) })
-	resetMaxButton := widget.NewButton("Reset max", func() { go resetMax(App) })
-	resetMinButton := widget.NewButton("Reset min", func() { go resetMin(App) })
-	resetGyroButton := widget.NewButton("Reset gyro", func() { go resetGyro(App) })
-	resetAccelerometerButton := widget.NewButton("Reset accelerometer", func() { go resetAccelerometer(App) })
-	resetBarometerButton := widget.NewButton("Reset barometer", func() { go resetBarometer(App) })
 	getLogButton := widget.NewButton("Get log", func() { go getLog(App) })
 
 	ipEditButton := widget.NewButtonWithIcon("", theme.DocumentCreateIcon(), func() {
@@ -90,16 +80,6 @@ func controlTab(App fyne.App, MainWindow fyne.Window) fyne.CanvasObject {
 		resetButton,
 		deployParachuteButton,
 		deployStageButton,
-		startLoggingButton,
-		stopLoggingButton,
-		recalibrateGyroButton,
-		recalibrateAccelerometerButton,
-		recalibrateBarometerButton,
-		resetMaxButton,
-		resetMinButton,
-		resetGyroButton,
-		resetAccelerometerButton,
-		resetBarometerButton,
 		getLogButton,
 	}
 
