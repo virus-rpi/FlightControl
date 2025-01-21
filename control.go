@@ -155,11 +155,11 @@ func threeDVisualisation() (fyne.CanvasObject, *Rocket) {
 		threeDEnv.SetFPSCap(60)
 	}
 
-	rocket := NewTwoStageRocket(types.Point3D{X: 0, Y: 0, Z: 0}, types.Rotation3D{X: 0, Y: 0, Z: 0}, threeDEnv)
+	rocket := NewTwoStageRocket(types.Point3D{X: 0, Y: 0, Z: 0}, types.Rotation3D{Roll: 0, Pitch: 0, Yaw: 0}, threeDEnv)
 	envCamera := camera.NewCamera(types.Point3D{}, types.Rotation3D{})
 	orbitController := camera.NewOrbitController(rocket)
 	orbitController.SetControlsEnabled(false)
-	orbitController.SetRotation(types.Rotation3D{X: 0, Y: 0, Z: 0})
+	orbitController.SetRotation(types.Rotation3D{Roll: 0, Pitch: 0, Yaw: 0})
 	envCamera.SetController(orbitController)
 	threeDEnv.SetCamera(&envCamera)
 

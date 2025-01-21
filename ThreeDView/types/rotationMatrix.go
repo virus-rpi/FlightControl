@@ -39,8 +39,8 @@ func (rotationMatrix *RotationMatrix) Multiply(other RotationMatrix) RotationMat
 // ToRotation3D converts the rotation matrix to a Rotation3D
 func (rotationMatrix *RotationMatrix) ToRotation3D() Rotation3D {
 	rotation := Rotation3D{}
-	rotation.X = Degrees(math.Asin(rotationMatrix[1][2]))
-	rotation.Y = Degrees(math.Atan2(rotationMatrix[0][2], rotationMatrix[2][2]))
-	rotation.Z = Degrees(math.Atan2(rotationMatrix[1][0], rotationMatrix[1][1]))
+	rotation.Roll = Degrees(math.Asin(rotationMatrix[1][2]))
+	rotation.Pitch = Degrees(math.Atan2(rotationMatrix[0][2], rotationMatrix[2][2]))
+	rotation.Yaw = Degrees(math.Atan2(rotationMatrix[1][0], rotationMatrix[1][1]))
 	return rotation
 }

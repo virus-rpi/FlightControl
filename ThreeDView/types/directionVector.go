@@ -10,7 +10,23 @@ type DirectionVector struct {
 // ToRotation converts a DirectionVector to a rotation in degree
 func (point *DirectionVector) ToRotation() Rotation3D {
 	return Rotation3D{
-		X: Radians(math.Asin(float64(point.Y))).ToDegrees(),
-		Y: Radians(math.Atan2(float64(point.X), float64(point.Z))).ToDegrees(),
+		Roll:  Radians(math.Asin(float64(point.Y))).ToDegrees(),
+		Pitch: Radians(math.Atan2(float64(point.X), float64(point.Z))).ToDegrees(),
 	}
+}
+
+// Magnitude returns the magnitude of the point (distance from origin)
+func (point *DirectionVector) Magnitude() Unit {
+	return Unit(math.Sqrt(float64(point.X*point.X + point.Y*point.Y + point.Z*point.Z)))
+}
+
+// Normalize normalizes the point
+func (point *DirectionVector) Normalize() {
+	magnitude := point.Magnitude()
+	if magnitude == 0 {
+		return
+	}
+	point.X /= magnitude
+	point.Y /= magnitude
+	point.Z /= magnitude
 }

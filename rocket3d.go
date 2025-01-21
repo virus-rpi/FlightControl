@@ -121,10 +121,10 @@ func (rocket *Rocket) SeparateStage() {
 				break
 			}
 			seperatedStage.Position.Z -= 2
-			seperatedStage.Rotation.Add(types.Rotation3D{X: 1, Y: 1, Z: 1})
+			seperatedStage.Rotation.Add(types.Rotation3D{Roll: 1, Pitch: 1, Yaw: 1})
 			time.Sleep(time.Millisecond * 10)
 		}
-		seperatedStage.Rotation.X = 90
+		seperatedStage.Rotation.Roll = 90
 		seperatedStage.Position.Z = 15
 	}()
 }
@@ -132,7 +132,7 @@ func (rocket *Rocket) SeparateStage() {
 func (rocket *Rocket) listenForData() {
 	for data := range rocket.DataChannel {
 		rocket.SetPosition(types.Point3D{X: rocket.position.X, Y: rocket.position.Y, Z: types.Unit(data.altitude) * 100})
-		rocket.SetRotation(types.Rotation3D{X: types.Degrees(data.xRotation), Y: types.Degrees(data.yRotation), Z: types.Degrees(data.zRotation)})
+		rocket.SetRotation(types.Rotation3D{Roll: types.Degrees(data.xRotation), Pitch: types.Degrees(data.yRotation), Yaw: types.Degrees(data.zRotation)})
 		if data.status.toIndex() > Status(StatusBoostedAscent).toIndex() && data.status != StatusError {
 			rocket.SeparateStage()
 		}

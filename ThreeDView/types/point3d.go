@@ -44,9 +44,9 @@ func (point *Point3D) RotateZ(pivot Point3D, degrees Degrees) {
 
 // Rotate rotates the point around a pivot point by the given rotation
 func (point *Point3D) Rotate(pivot Point3D, rotation Rotation3D) {
-	point.RotateX(pivot, rotation.X)
-	point.RotateY(pivot, rotation.Y)
-	point.RotateZ(pivot, rotation.Z)
+	point.RotateX(pivot, rotation.Roll)
+	point.RotateY(pivot, rotation.Pitch)
+	point.RotateZ(pivot, rotation.Yaw)
 }
 
 // Add adds another point to the point
@@ -71,28 +71,12 @@ func (point *Point3D) DistanceTo(other Point3D) Unit {
 	return Unit(math.Sqrt(float64(dx*dx + dy*dy + dz*dz)))
 }
 
-// Magnitude returns the magnitude of the point (distance from origin)
-func (point *Point3D) Magnitude() Unit {
-	return Unit(math.Sqrt(float64(point.X*point.X + point.Y*point.Y + point.Z*point.Z)))
-}
-
 // Dot returns the dot product of the point with another point
 func (point *Point3D) Dot(other Point3D) Unit {
 	return point.X*other.X + point.Y*other.Y + point.Z*other.Z
 }
 
-// Normalize normalizes the point
-func (point *Point3D) Normalize() {
-	magnitude := point.Magnitude()
-	if magnitude == 0 {
-		return
-	}
-	point.X /= magnitude
-	point.Y /= magnitude
-	point.Z /= magnitude
-}
-
-// Cross returns the cross product of the point with another point
+// Cross returns the cross-product of the point with another point
 func (point *Point3D) Cross(other Point3D) Point3D {
 	return Point3D{
 		X: point.Y*other.Z - point.Z*other.Y,

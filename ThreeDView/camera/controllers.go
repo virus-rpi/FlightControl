@@ -24,7 +24,7 @@ type OrbitController struct {
 
 // NewOrbitController creates a new OrbitController with the target Object
 func NewOrbitController(target ObjectInterface) *OrbitController {
-	return &OrbitController{target: target, distance: 500, rotation: Rotation3D{Y: 300}, controlsEnabled: true}
+	return &OrbitController{target: target, distance: 500, rotation: Rotation3D{Pitch: 300}, controlsEnabled: true}
 }
 
 func (controller *OrbitController) setCamera(camera *Camera) {
@@ -74,7 +74,7 @@ func (controller *OrbitController) OnDrag(x, y float32) {
 	if !controller.controlsEnabled {
 		return
 	}
-	controller.Rotate(Rotation3D{Y: Degrees(-y), Z: Degrees(x)})
+	controller.Rotate(Rotation3D{Pitch: Degrees(-y), Yaw: Degrees(x)})
 }
 
 // OnDragEnd is called when the user stops dragging the camera. DO NOT CALL THIS FUNCTION MANUALLY
@@ -113,10 +113,10 @@ func (controller *OrbitController) pointAtTarget() {
 	direction.Subtract(controller.camera.Position)
 	direction.Normalize()
 	rotation := direction.ToRotation()
-	controller.camera.Rotation.X = -rotation.X
-	controller.camera.Rotation.Y = -rotation.Y
+	controller.camera.Rotation.Roll = -rotation.Roll
+	controller.camera.Rotation.Pitch = -rotation.Pitch
 
-	controller.camera.Rotation.Z = controller.rotation.Z - 90
+	controller.camera.Rotation.Yaw = controller.rotation.Yaw - 90
 }
 
 // ManualController is a controller that allows the camera to be manually controlled. Useful for debugging
@@ -133,15 +133,15 @@ func NewManualController() *ManualController {
 func (controller *ManualController) GetRotationSlider() *fyne.Container {
 	sliderYaw := widget.NewSlider(0, 360)
 	sliderYaw.OnChanged = func(value float64) {
-		controller.camera.Rotation.X = Degrees(value)
+		controller.camera.Rotation.Roll = Degrees(value)
 	}
 	sliderPitch := widget.NewSlider(0, 360)
 	sliderPitch.OnChanged = func(value float64) {
-		controller.camera.Rotation.Y = Degrees(value)
+		controller.camera.Rotation.Pitch = Degrees(value)
 	}
 	sliderRoll := widget.NewSlider(0, 360)
 	sliderRoll.OnChanged = func(value float64) {
-		controller.camera.Rotation.Z = Degrees(value)
+		controller.camera.Rotation.Yaw = Degrees(value)
 	}
 	sliderContainer := container.NewVBox(sliderYaw, sliderPitch, sliderRoll)
 	return sliderContainer
@@ -202,7 +202,7 @@ func (controller *ManualController) GetInfoLabel() *widget.Label {
 		for range ticker.C {
 			label.SetText(fmt.Sprintf("X: %.2f Y: %.2f Z: %.2f      Yaw: %d Pitch: %d Roll: %d",
 				controller.camera.Position.X, controller.camera.Position.Y, controller.camera.Position.Z,
-				controller.camera.Rotation.X, controller.camera.Rotation.Y, controller.camera.Rotation.Z))
+				controller.camera.Rotation.Roll, controller.camera.Rotation.Pitch, controller.camera.Rotation.Yaw))
 			label.Refresh()
 		}
 	}()
