@@ -3,6 +3,7 @@ package Graph
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/vg"
@@ -14,16 +15,17 @@ import (
 
 type Widget struct {
 	widget.BaseWidget
-	MinWidgetSize    fyne.Size
-	image            *canvas.Image
-	Plot             *plot.Plot
-	PlotXMin         float64
-	PlotXMax         float64
-	PlotYMin         float64
-	PlotYMax         float64
-	scale            float64
-	currentSelection [4]float64
-	resetButton      *widget.Button
+	MinWidgetSize   fyne.Size
+	image           *canvas.Image
+	Plot            *plot.Plot
+	PlotXMin        float64
+	PlotXMax        float64
+	PlotYMin        float64
+	PlotYMax        float64
+	scale           float64
+	tools           []tool
+	buttons         []fyne.CanvasObject
+	buttonContainer *fyne.Container
 }
 
 func NewGraphWidget() *Widget {
@@ -41,19 +43,32 @@ func NewGraphWidget() *Widget {
 	w.Plot.Y.Tick.Label.Color = color.White
 	w.Plot.X.Tick.Label.Color = color.White
 
-	w.resetButton = widget.NewButton("Reset axis", w.resetAxis)
+	w.buttonContainer = container.NewHBox(w.buttons...)
 
 	w.image = canvas.NewImageFromImage(w.render())
 	w.resetAxis()
 	return w
 }
 
-func (w *Widget) SetMaxBounds(xMin, xMax, yMin, yMax float64) {
+func (w *Widget) AddTool(tool tool) *Widget {
+	tool.setWidget(w)
+	if tool.hasIntent("button") {
+		tool.registerButtons()
+		w.buttonContainer.Objects = w.buttons
+	}
+	tool.Enable()
+	w.tools = append(w.tools, tool)
+	return w
+}
+
+func (w *Widget) SetMaxBounds(xMin, xMax, yMin, yMax float64) *Widget {
 	w.PlotXMin = xMin
 	w.PlotXMax = xMax
 	w.PlotYMin = yMin
 	w.PlotYMax = yMax
 	w.resetAxis()
+
+	return w
 }
 
 func (w *Widget) SetMinWidgetSize(size fyne.Size) {
@@ -61,19 +76,13 @@ func (w *Widget) SetMinWidgetSize(size fyne.Size) {
 }
 
 func (w *Widget) render() image.Image {
-	img := image.NewRGBA(image.Rect(0, 0, int(w.Size().Width), int(w.Size().Height-w.resetButton.Size().Height)))
+	img := image.NewRGBA(image.Rect(0, 0, int(w.Size().Width), int(w.Size().Height-w.buttonContainer.Size().Height)))
 	c := vgimg.NewWith(vgimg.UseImage(img))
 	dc := draw.New(c)
 	w.Plot.Draw(dc)
 
-	if w.currentSelection[0] != 0 || w.currentSelection[1] != 0 || w.currentSelection[2] != 0 || w.currentSelection[3] != 0 {
-		rect := vg.Rectangle{
-			Min: vg.Point{X: vg.Length(w.pixelToDotsX(w.currentSelection[0])), Y: vg.Length(w.pixelToDotsY(w.currentSelection[1]))},
-			Max: vg.Point{X: vg.Length(w.pixelToDotsX(w.currentSelection[2])), Y: vg.Length(w.pixelToDotsY(w.currentSelection[3]))},
-		}
-
-		c.SetColor(color.NRGBA{R: 173, G: 216, B: 230, A: 150})
-		c.Fill(rect.Path())
+	for _, tool := range w.tools {
+		tool.onRender(c)
 	}
 
 	return c.Image()
@@ -85,7 +94,7 @@ func (w *Widget) pixelToDotsX(x float64) float64 {
 }
 func (w *Widget) pixelToDotsY(y float64) float64 {
 	scale := float64(vg.Inch / vgimg.DefaultDPI)
-	return (float64(w.Size().Height) - y - float64(w.resetButton.Size().Height)) * scale
+	return (float64(w.Size().Height) - y - float64(w.buttonContainer.Size().Height)) * scale
 }
 
 func (w *Widget) resetAxis() {
@@ -97,32 +106,16 @@ func (w *Widget) resetAxis() {
 }
 
 func (w *Widget) Dragged(ev *fyne.DragEvent) {
-	if w.currentSelection[0] == 0 && w.currentSelection[1] == 0 {
-		w.currentSelection[0] = float64(ev.Position.X)
-		w.currentSelection[1] = float64(ev.Position.Y)
+	for _, tool := range w.tools {
+		tool.onDrag(ev)
 	}
-	w.currentSelection[2] = float64(ev.Position.X)
-	w.currentSelection[3] = float64(ev.Position.Y)
 	w.Refresh()
 }
 
 func (w *Widget) DragEnd() {
-	widthPlot := w.Plot.X.Max - w.Plot.X.Min
-	xScale := widthPlot / float64(w.Size().Width)
-	newXMin := w.currentSelection[0] * xScale
-	newXMax := w.currentSelection[2] * xScale
-	heightPlot := w.Plot.Y.Max - w.Plot.Y.Min
-	yScale := heightPlot / float64(w.Size().Height-w.resetButton.Size().Height)
-	newYMin := heightPlot - w.currentSelection[1]*yScale
-	newYMax := heightPlot - w.currentSelection[3]*yScale
-	w.Plot.X.Min = newXMin
-	w.Plot.X.Max = newXMax
-	w.Plot.Y.Min = newYMin
-	w.Plot.Y.Max = newYMax
-	w.currentSelection[0] = 0
-	w.currentSelection[1] = 0
-	w.currentSelection[2] = 0
-	w.currentSelection[3] = 0
+	for _, tool := range w.tools {
+		tool.onDragEnd()
+	}
 	w.Refresh()
 }
 
@@ -145,12 +138,21 @@ func (gr *graphRenderer) Destroy() {}
 func (gr *graphRenderer) Layout(size fyne.Size) {
 	gr.graphWidget.Resize(size)
 	if fyne.CurrentDevice().IsMobile() {
-		gr.graphWidget.resetButton.Resize(fyne.NewSize(130, 40))
+		gr.graphWidget.buttonContainer.Resize(fyne.NewSize(size.Width, 40))
+		for _, button := range gr.graphWidget.buttons {
+			button.Resize(fyne.NewSize(130, 40))
+		}
 	} else {
-		gr.graphWidget.resetButton.Resize(fyne.NewSize(70, 30))
+		gr.graphWidget.buttonContainer.Resize(fyne.NewSize(size.Width, 30))
+		for _, button := range gr.graphWidget.buttons {
+			button.Resize(fyne.NewSize(70, 30))
+		}
 	}
-	gr.image.Resize(fyne.NewSize(size.Width, size.Height-gr.graphWidget.resetButton.Size().Height))
-	gr.graphWidget.resetButton.Move(fyne.NewPos(size.Width-gr.graphWidget.resetButton.Size().Width-5, size.Height-gr.graphWidget.resetButton.Size().Height))
+	gr.image.Resize(fyne.NewSize(size.Width, size.Height-gr.graphWidget.buttonContainer.Size().Height))
+	gr.graphWidget.buttonContainer.Move(fyne.NewPos(0, size.Height-gr.graphWidget.buttonContainer.Size().Height))
+	for i, button := range gr.graphWidget.buttons {
+		button.Move(fyne.NewPos(5+float32(i)*(button.Size().Width+10), 0))
+	}
 	gr.Refresh()
 }
 
@@ -162,7 +164,7 @@ func (gr *graphRenderer) MinSize() fyne.Size {
 }
 
 func (gr *graphRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{gr.image, gr.graphWidget.resetButton}
+	return []fyne.CanvasObject{gr.image, gr.graphWidget.buttonContainer}
 }
 
 func (gr *graphRenderer) Refresh() {

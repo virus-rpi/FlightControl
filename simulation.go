@@ -18,8 +18,10 @@ func simulationTab() fyne.CanvasObject {
 	threeDEnv.SetTPSCap(1600)
 	if fyne.CurrentDevice().IsMobile() {
 		threeDEnv.SetFPSCap(30)
+		threeDEnv.SetResolutionFactor(0.3)
 		object.NewPlane(1000, types.Point3D{X: 0, Y: 0, Z: 0}, types.Rotation3D{Roll: 0, Pitch: 0, Yaw: 0}, color.RGBA{G: 255, A: 255}, threeDEnv, 4)
 	} else {
+		threeDEnv.SetResolutionFactor(0.5)
 		object.NewPlane(5000, types.Point3D{X: 0, Y: 0, Z: 0}, types.Rotation3D{Roll: 0, Pitch: 0, Yaw: 0}, color.RGBA{G: 255, A: 255}, threeDEnv, 5)
 	}
 
